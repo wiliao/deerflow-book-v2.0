@@ -805,16 +805,16 @@ client.delete_upload(thread_id, "file.pdf")
 client.get_artifact(thread_id, "mnt/user-data/outputs/result.txt")
 ```
 
-## 5.9 SwarmMind 二次开发：自定义 Lead Agent
+## 5.9 DeerFlow 二次开发：自定义 Lead Agent
 
 ### 5.9.1 扩展 ThreadState
 
 ```python
-# SwarmMind 定制 ThreadState
-class SwarmMindThreadState(ThreadState):
+# 定制 ThreadState
+class CustomThreadState(ThreadState):
     # 原有字段...
     
-    # 新增：企业级字段
+    # 新增：自定义字段
     project_id: Optional[str]        # 当前项目
     organization_id: Optional[str]   # 组织 ID
     user_role: Optional[str]         # 用户角色
@@ -825,9 +825,9 @@ class SwarmMindThreadState(ThreadState):
 ### 5.9.2 添加企业中间件
 
 ```python
-class SwarmMindMiddlewareChain:
+class CustomMiddlewareChain:
     """
-    SwarmMind 定制中间件链
+    定制中间件链
     """
     
     @staticmethod
@@ -853,15 +853,15 @@ class SwarmMindMiddlewareChain:
 ### 5.9.3 自定义 Agent 工厂
 
 ```python
-def make_swarmmind_agent(config: RunnableConfig) -> CompiledGraph:
+def make_custom_agent(config: RunnableConfig) -> CompiledGraph:
     """
-    SwarmMind 定制 Agent 工厂
+    定制 Agent 工厂
     """
     # 1. 构建中间件链
-    middlewares = SwarmMindMiddlewareChain.build()
+    middlewares = CustomMiddlewareChain.build()
     
     # 2. 创建 Agent
-    workflow = StateGraph(SwarmMindThreadState)
+    workflow = StateGraph(CustomThreadState)
     
     # 3. 添加节点
     workflow.add_node("middlewares", run_middleware_chain(middlewares))
@@ -890,7 +890,7 @@ DeerFlow Agent 核心要点：
 | **配置驱动** | configurable 运行时注入 |
 | **Prompt 组装** | 动态拼接 Skills/Memory/Subagent |
 
-SwarmMind 可在此基础上：
-- 扩展 ThreadState 添加企业字段
-- 在中间件链中添加 RBAC、审批、审计
-- 自定义工具集满足企业需求
+开发者可在此基础上：
+- 扩展 ThreadState 添加自定义字段
+- 在中间件链中添加自定义中间件
+- 自定义工具集满足特定需求

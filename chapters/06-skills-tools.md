@@ -1005,7 +1005,7 @@ class MCPToolAdapter:
 name: enterprise/document-review
 version: 1.0.0
 description: 企业文档审查 Skill
-author: SwarmMind
+author: DeerFlow
 
 prompts:
   system: |
@@ -1156,7 +1156,7 @@ skills/custom/my-skill/
 └── .history/          # 版本历史
 ```
 
-SwarmMind 可通过自定义 Skills 实现：
+DeerFlow 可通过自定义 Skills 实现：
 - 企业文档审查能力
 - 合规检查自动化
 - 财务报表分析

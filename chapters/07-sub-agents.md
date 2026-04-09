@@ -673,14 +673,14 @@ async def research_node(state: AgentState) -> AgentState:
     }
 ```
 
-## 7.7 SwarmMind Agent Teams 设计
+## 7.7 DeerFlow Agent Teams 设计
 
-基于 DeerFlow 的 Sub-Agent 机制，SwarmMind 可以设计以下 Agent Teams：
+基于 DeerFlow 的 Sub-Agent 机制，可以设计以下 Agent Teams：
 
 ### 7.7.1 企业专用 Agent 类型
 
 ```python
-# SwarmMind Agent Types
+# DeerFlow Agent Types
 AGENT_TYPES = {
     # 基础能力
     "lead": LeadAgent,           # 主控 Agent
@@ -940,7 +940,7 @@ DeerFlow 的 Sub-Agent 体系核心要点：
 | **结果聚合** | Lead Agent 整合子结果 |
 | **记忆分层** | 短期/项目/长期记忆分离 |
 
-SwarmMind 的 Agent Teams 可以在此基础上扩展：
+DeerFlow 的 Agent Teams 可以在此基础上扩展：
 - 增加企业专用 Agent 类型
 - 实现项目级记忆共享
 - 添加人工审批节点

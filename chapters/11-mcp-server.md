@@ -956,12 +956,12 @@ npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb
 - `execute` - 执行 DDL/DML
 - `list_tables` - 列出表
 
-## 11.12 二次开发：SwarmMind MCP 集成
+## 11.12 二次开发：企业 MCP 集成
 
 ### 11.12.1 企业数据库 MCP Server
 
 ```python
-# swarmmind/mcp/enterprise_db.py
+# deerflow/mcp/enterprise_db.py
 
 from mcp.server import Server
 from mcp.types import Tool, TextContent
@@ -1067,7 +1067,7 @@ class EnterpriseDBServer:
 ### 11.12.2 企业内部 API MCP Server
 
 ```python
-# swarmmind/mcp/corporate_api.py
+# deerflow/mcp/corporate_api.py
 
 class CorporateAPIServer:
     """
@@ -1180,6 +1180,6 @@ class CorporateAPIServer:
 | **工具名前缀** | 自动添加 `{server_name}_` 前缀避免冲突 |
 | **错误处理** | 优雅降级、详细日志、配置验证 |
 | **常用 Servers** | 文件系统、GitHub、Slack、PostgreSQL |
-| **SwarmMind 扩展** | 企业数据库、企业 API |
+| **企业扩展** | 企业数据库、企业 API |
 
-MCP 是 DeerFlow 扩展能力的核心途径。通过完善的 OAuth 支持、缓存机制和错误处理，SwarmMind 可以稳定、高效地集成各类 MCP Server，实现与企业现有系统的无缝连接。
+MCP 是 DeerFlow 扩展能力的核心途径。通过完善的 OAuth 支持、缓存机制和错误处理，DeerFlow 可以稳定、高效地集成各类 MCP Server，实现与企业现有系统的无缝连接。
