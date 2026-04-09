@@ -403,9 +403,9 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 - **Discussions**: https://github.com/bytedance/deer-flow/discussions
 - **文档**: https://docs.deerflow.tech
 
-## B.10 SwarmMind 贡献
+## B.10 企业级应用贡献
 
-如果基于 DeerFlow 开发 SwarmMind，建议：
+如果基于 DeerFlow 开发企业级应用，建议：
 
 1. **保持 Fork 同步**：定期从上游 DeerFlow 合并
 2. **差异化文档**：维护独立的开发文档

@@ -80,7 +80,7 @@ name: enterprise-finance-analyst
 version: 1.0.0
 description: 企业财务分析 Skill，支持报表生成、指标计算、趋势分析
 
-author: SwarmMind Team
+author: Enterprise Team
 compatibility: ">=2.0.0"
 
 # 提示词配置
@@ -625,7 +625,7 @@ curl -X POST http://localhost:2024/runs \
   }'
 ```
 
-## 12.8 SwarmMind 企业 Skill 示例
+## 12.8 企业级 Skill 示例
 
 ### 12.8.1 合规审查 Skill
 
@@ -635,7 +635,7 @@ curl -X POST http://localhost:2024/runs \
 name: enterprise/compliance-review
 version: 1.0.0
 description: 企业合规审查 Skill
-author: SwarmMind
+author: Enterprise Team
 
 prompts:
   system: |
@@ -686,7 +686,7 @@ constraints:
 name: enterprise/code-review
 version: 1.0.0
 description: 企业代码审查 Skill
-author: SwarmMind
+author: Enterprise Team
 
 prompts:
   system: |
@@ -751,4 +751,4 @@ constraints:
 | **发布** | ClawHub 分享 |
 | **企业定制** | 继承基础框架，扩展企业能力 |
 
-Skill 是 DeerFlow 能力扩展的核心方式，SwarmMind 通过企业级 Skill 可以快速构建差异化竞争力。
+Skill 是 DeerFlow 能力扩展的核心方式，通过企业级 Skill 可以快速构建差异化竞争力。

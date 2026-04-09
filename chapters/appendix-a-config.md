@@ -343,12 +343,12 @@ make config-upgrade
 # 4. 保留原有配置
 ```
 
-## A.6 SwarmMind 扩展配置
+## A.6 企业级扩展配置
 
 ```yaml
-# SwarmMind 企业配置扩展
+# 企业级配置扩展
 
-swarmmind:
+enterprise:
   # 多租户配置
   multi_tenant:
     enabled: true
@@ -371,7 +371,7 @@ swarmmind:
     enabled: true
     storage:
       type: s3
-      bucket: swarmmind-audit
+      bucket: enterprise-audit
     retention_days: 2555
   
   # 企业知识库

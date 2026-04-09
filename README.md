@@ -26,7 +26,7 @@
 - [第十一章 · MCP Server 集成](./chapters/11-mcp-server.md) ✅
 - [第十二章 · 自定义 Skill 开发](./chapters/12-custom-skill.md) ✅
 - [第十三章 · Human-in-the-Loop 人工审批机制](./chapters/13-human-in-the-loop.md) ✅
-- [第十四章 · SwarmMind 企业级定制案例](./chapters/14-enterprise-cases.md) ✅
+- [第十四章 · DeerFlow 企业级应用案例](./chapters/14-enterprise-cases.md) ✅
 
 ### 附录
 - [附录 A · 配置参考](./chapters/appendix-a-config.md) ✅

@@ -272,14 +272,14 @@ async def recursive_summarize(
     )
 ```
 
-## 9.6 SwarmMind 记忆系统设计
+## 9.6 企业级记忆系统设计
 
 ### 9.6.1 企业知识库集成
 
 ```python
-class SwarmMindMemorySystem:
+class EnterpriseMemorySystem:
     """
-    SwarmMind 的企业级记忆系统
+    企业级记忆系统
     """
     
     def __init__(self, kb_client: KnowledgeBaseClient):
@@ -486,7 +486,7 @@ DeerFlow 的 Memory 系统核心要点：
 | **Consolidation** | 自动触发记忆整合，防止上下文膨胀 |
 | **Retrieval** | 多策略检索，相关记忆召回 |
 
-SwarmMind 的企业级记忆扩展方向：
+企业级记忆扩展方向：
 - **知识库集成**：对接企业文档、FAQ、标准操作程序
 - **项目级记忆**：长周期项目的状态追踪
 - **权限控制**：基于 RBAC 的记忆访问隔离

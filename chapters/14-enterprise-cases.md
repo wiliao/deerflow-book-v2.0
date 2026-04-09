@@ -1,12 +1,12 @@
-# 第十四章 · SwarmMind 企业级定制案例
+# 第十四章 · DeerFlow 企业级应用案例
 
-## 14.1 案例背景：SwarmMind 需求分析
+## 14.1 案例背景：企业级应用需求分析
 
-基于前文对 SwarmMind 产品规划的分析，本章聚焦 DeerFlow 二次开发的具体实现路径。
+基于企业级应用场景的需求分析，本章聚焦 DeerFlow 二次开发的具体实现路径。
 
 **核心需求映射：**
 
-| SwarmMind 模块 | 二次开发重点 |
+| 企业级模块 | 二次开发重点 |
 |---------------|--------------|
 | Agent Teams | Sub-Agent 体系扩展 + 自定义 Agent 类型 |
 | Memory | 企业知识库集成 + 项目级记忆 |
@@ -19,7 +19,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│                        SwarmMind Architecture                           │
+│                      Enterprise Architecture                            │
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                       │
 │  ┌──────────────────────────────────────────────────────────────┐   │
@@ -39,7 +39,7 @@
 │  │  (8001)         │   │        (2024)                        │     │
 │  │                 │   │                                       │     │
 │  │  - Auth         │   │  ┌─────────────────────────────────┐ │     │
-│  │  - RBAC         │   │  │   SwarmMind Agent               │ │     │
+│  │  - RBAC         │   │  │   Enterprise Agent              │ │     │
 │  │  - Tenant Mgmt  │   │  │                                 │ │     │
 │  │  - Audit        │   │  │  - Middleware Chain (定制)      │ │     │
 │  └─────────────────┘   │  │  - Agent Teams                  │ │     │
@@ -64,7 +64,7 @@
 ### 14.3.1 租户上下文
 
 ```python
-# swarmmind/tenant/context.py
+# enterprise/tenant/context.py
 
 class TenantContext:
     """
@@ -97,7 +97,7 @@ class TenantContext:
 ### 14.3.2 租户中间件
 
 ```python
-# swarmmind/tenant/middleware.py
+# enterprise/tenant/middleware.py
 
 class TenantMiddleware:
     """
@@ -165,7 +165,7 @@ class TenantDataIsolation:
 ### 14.4.1 权限模型
 
 ```python
-# swarmmind/auth/rbac.py
+# enterprise/auth/rbac.py
 
 class Role(str, Enum):
     TENANT_ADMIN = "tenant_admin"      # 租户管理员
@@ -235,7 +235,7 @@ ROLE_PERMISSIONS = {
 ### 14.4.2 权限检查装饰器
 
 ```python
-# swarmmind/auth/decorators.py
+# enterprise/auth/decorators.py
 
 def require_permission(*permissions: Permission):
     """
@@ -275,7 +275,7 @@ async def approve_action(project_id: str, ...):
 ### 14.5.1 审计事件定义
 
 ```python
-# swarmmind/audit/events.py
+# enterprise/audit/events.py
 
 class AuditEventType(str, Enum):
     # 认证事件
@@ -339,7 +339,7 @@ class AuditEvent:
 ### 14.5.2 审计日志存储
 
 ```python
-# swarmmind/audit/storage.py
+# enterprise/audit/storage.py
 
 class AuditLogStorage:
     """
@@ -396,7 +396,7 @@ class AuditLogStorage:
 ### 14.5.3 审计中间件
 
 ```python
-# swarmmind/audit/middleware.py
+# enterprise/audit/middleware.py
 
 class AuditMiddleware:
     """
@@ -434,7 +434,7 @@ class AuditMiddleware:
 ### 14.6.1 知识库客户端
 
 ```python
-# swarmmind/knowledge/base.py
+# enterprise/knowledge/base.py
 
 class CorporateKnowledgeBase(ABC):
     """
@@ -484,7 +484,7 @@ class KnowledgeFilters(BaseModel):
 ### 14.6.2 知识检索中间件
 
 ```python
-# swarmmind/knowledge/middleware.py
+# enterprise/knowledge/middleware.py
 
 class KnowledgeRetrievalMiddleware:
     """
@@ -546,7 +546,7 @@ class KnowledgeRetrievalMiddleware:
 ### 14.7.1 审批规则引擎
 
 ```python
-# swarmmind/approval/engine.py
+# enterprise/approval/engine.py
 
 class ApprovalRuleEngine:
     """
@@ -638,7 +638,7 @@ class SensitiveDataApprovalRule(ApprovalRule):
 ### 14.7.2 飞书审批卡片
 
 ```python
-# swarmmind/approval/feishu.py
+# enterprise/approval/feishu.py
 
 class FeishuApprovalNotifier:
     """
@@ -727,7 +727,7 @@ class FeishuApprovalNotifier:
 ### 14.8.1 项目状态机
 
 ```python
-# swarmmind/project/state_machine.py
+# enterprise/project/state_machine.py
 
 class ProjectState(str, Enum):
     PLANNING = "planning"
@@ -806,7 +806,7 @@ class ProjectStateMachine:
 ### 14.8.2 多 Agent 任务分解
 
 ```python
-# swarmmind/project/task_decomposition.py
+# enterprise/project/task_decomposition.py
 
 class TaskDecomposer:
     """
@@ -878,29 +878,29 @@ class TaskDecomposer:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: swarmmind-gateway
+  name: enterprise-gateway
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: swarmmind-gateway
+      app: enterprise-gateway
   template:
     spec:
       containers:
         - name: gateway
-          image: swarmmind/gateway:latest
+          image: enterprise/gateway:latest
           ports:
             - containerPort: 8001
           env:
             - name: TENANT_DB_URL
               valueFrom:
                 secretKeyRef:
-                  name: swarmmind-secrets
+                  name: enterprise-secrets
                   key: tenant-db-url
             - name: AUDIT_STORAGE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: swarmmind-secrets
+                  name: enterprise-secrets
                   key: audit-signing-key
           resources:
             requests:
@@ -913,32 +913,32 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: swarmmind-langgraph
+  name: enterprise-langgraph
 spec:
   replicas: 5
   selector:
     matchLabels:
-      app: swarmmind-langgraph
+      app: enterprise-langgraph
   template:
     spec:
       containers:
         - name: langgraph
-          image: swarmmind/langgraph:latest
+          image: enterprise/langgraph:latest
           ports:
             - containerPort: 2024
           env:
             - name: SANDBOX_MODE
               value: "provisioner"
             - name: PROVISIONER_URL
-              value: "http://swarmmind-provisioner:8002"
+              value: "http://enterprise-provisioner:8002"
 ```
 
 ### 14.9.2 配置管理
 
 ```yaml
-# config/swarmmind-config.yaml
+# config/enterprise-config.yaml
 
-swarmmind:
+enterprise:
   # 多租户配置
   multi_tenant:
     enabled: true
@@ -959,7 +959,7 @@ swarmmind:
     enabled: true
     storage:
       type: s3
-      bucket: swarmmind-audit-logs
+      bucket: enterprise-audit-logs
     retention_days: 2555  # 7年，合规要求
   
   # 知识库配置
@@ -975,7 +975,7 @@ swarmmind:
   sandbox:
     mode: provisioner
     provisioner:
-      url: http://swarmmind-provisioner:8002
+      url: http://enterprise-provisioner:8002
       kubeconfig_path: /etc/kube/config
     defaults:
       cpu_limit: "2"
@@ -985,7 +985,7 @@ swarmmind:
 
 ## 14.10 小结
 
-本章展示了基于 DeerFlow 构建 SwarmMind 的完整开发路径：
+本章展示了基于 DeerFlow 构建企业级应用的完整开发路径：
 
 | 模块 | 实现方式 |
 |------|----------|

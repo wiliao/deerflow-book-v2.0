@@ -22,7 +22,7 @@ DeerFlow 原生状态机：
 START → PLANNING → EXECUTING → REVIEWING → END
 ```
 
-SwarmMind 扩展：
+企业级扩展：
 
 ```
 START → PLANNING → EXECUTING → REVIEWING 
@@ -504,7 +504,7 @@ class CustomApprovalRule(ApprovalRule):
 
 from deerflow.middleware import MiddlewareChain
 
-async def create_swarmmind_agent(config: Config):
+async def create_enterprise_agent(config: Config):
     # 1. 创建基础 Agent
     agent = make_lead_agent(config)
     
@@ -516,7 +516,7 @@ async def create_swarmmind_agent(config: Config):
             ExternalActionApprovalRule(),
         ],
         notification_channels=["feishu", "email"],
-        audit_logger=SwarmMindAuditLogger(),
+        audit_logger=EnterpriseAuditLogger(),
     )
     
     # 3. 注册到中间件链
@@ -538,4 +538,4 @@ Human-in-the-Loop 是企业级 Agent 的必备能力：
 | **审计日志** | 防篡改，完整追溯 |
 | **合规报告** | 自动生成审计报告 |
 
-SwarmMind 通过 DeerFlow 中间件机制，可以在不影响原有架构的情况下，优雅地添加人工审批能力，兼顾 AI 效率和人工控制。
+通过 DeerFlow 中间件机制，可以在不影响原有架构的情况下，优雅地添加人工审批能力，兼顾 AI 效率和人工控制。

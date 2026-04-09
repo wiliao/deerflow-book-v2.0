@@ -153,9 +153,9 @@ sandbox:
 }
 ```
 
-## 4.6 SwarmMind 二次开发建议
+## 4.6 DeerFlow 二次开发建议
 
-基于 DeerFlow 结构，SwarmMind 可以在以下位置扩展：
+基于 DeerFlow 结构，可以在以下位置扩展：
 
 | 扩展点 | 位置 | 说明 |
 |--------|------|------|

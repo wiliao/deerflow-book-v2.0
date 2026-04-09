@@ -500,7 +500,7 @@ class ThreadState(AgentState):
     last_compress_at: Optional[int]    # 上次压缩时间戳
 ```
 
-## 10.7 二次开发：SwarmMind 上下文优化
+## 10.7 二次开发：企业级上下文优化
 
 ### 10.7.1 企业知识库注入
 
@@ -609,7 +609,7 @@ class ProjectContextMiddleware:
 | **RAG** | 混合检索（向量+关键词+图） |
 | **上下文窗口** | 超长文档的分块处理 |
 
-SwarmMind 的 Context Engineering 优化：
+企业级 Context Engineering 优化：
 - **企业知识库注入** — 实时检索公司政策、文档
 - **项目上下文** — 保持长周期项目的状态一致
 - **角色感知** — 根据用户角色过滤上下文
