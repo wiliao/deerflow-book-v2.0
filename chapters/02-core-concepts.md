@@ -54,7 +54,7 @@ skill:
     - scrape
   prompt: |
     你是一个专业的研究员...
-```
+```python
 
 **内置 Skills：**
 - `deer-flow-skills/recursive-summarizer` - 递归摘要

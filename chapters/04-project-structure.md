@@ -92,7 +92,7 @@ deer-flow/
 #    → 删除 thread state
 # 2. Gateway routers/threads.py
 #    → 通过 Paths.delete_thread_dir() 清理文件系统数据
-```
+```python
 
 ### 4.2.2 Agents (`backend/packages/harness/deerflow/agents/`)
 
@@ -172,7 +172,7 @@ frontend/
 │   └── lib/             # 通用工具
 ├── tests/               # 前端测试
 └── public/              # 静态资源
-```
+```bash
 
 ## 4.4 开发命令
 

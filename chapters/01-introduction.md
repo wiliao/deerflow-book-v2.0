@@ -99,7 +99,7 @@ npm install -g pnpm
 
 # uv (Python 包管理)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+```bash
 
 ### 快速启动
 

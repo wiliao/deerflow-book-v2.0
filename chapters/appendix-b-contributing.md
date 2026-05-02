@@ -56,7 +56,7 @@ make docker-start
 make check        # 检查依赖
 make install      # 安装依赖
 make dev          # 启动开发服务
-```
+```bash
 
 ### B.2.2 本地开发依赖
 
@@ -95,7 +95,7 @@ mypy .
 
 # 测试
 uv run pytest
-```
+```python
 
 **代码风格：**
 - 使用 `ruff` 自动格式化
@@ -179,7 +179,7 @@ uv run pytest tests/test_agent.py
 
 # 带覆盖率
 uv run pytest --cov=. --cov-report=html
-```
+```python
 
 ### B.4.2 集成测试
 
@@ -266,7 +266,7 @@ async def test_agent_execution(config):
 ## 相关文档
 
 - [相关文档链接](./other-doc.md)
-```
+```bash
 
 ## B.6 Pull Request 流程
 

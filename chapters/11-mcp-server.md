@@ -210,7 +210,7 @@ class MCPClient:
                     description=tool.get("description", ""),
                     input_schema=tool.get("inputSchema", {})
                 )
-```
+```python
 
 ### 11.4.2 工具调用
 
@@ -305,7 +305,7 @@ class MCPToolAdapter:
                 )
         
         return MCPDynamicTool
-```
+```python
 
 ### 11.5.2 工具注册
 
@@ -561,7 +561,7 @@ class OAuthTokenManager:
     }
   ]
 }
-```
+```python
 
 ### 11.7.3 Token 自动刷新机制
 
@@ -683,7 +683,7 @@ def _is_cache_stale() -> bool:
         return True
     
     return False
-```
+```python
 
 ### 11.8.3 工具初始化和懒加载
 
@@ -844,7 +844,7 @@ async def get_mcp_tools() -> list[BaseTool]:
     except Exception as e:
         logger.error(f"Failed to load MCP tools: {e}", exc_info=True)
         return []  # 优雅降级：返回空列表而非抛出异常
-```
+```python
 
 ### 11.10.2 工具调用错误处理
 
@@ -923,7 +923,7 @@ npx -y @modelcontextprotocol/server-filesystem /path/to/allowed/directory
 ```bash
 npx -y @modelcontextprotocol/server-github
 # 需要 GITHUB_PERSONAL_ACCESS_TOKEN 环境变量
-```
+```bash
 
 **工具：**
 - `search_repositories` - 搜索仓库
@@ -949,7 +949,7 @@ python -m mcp_server_slack
 
 ```bash
 npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb
-```
+```python
 
 **工具：**
 - `query` - 执行查询

@@ -94,7 +94,7 @@ class ContextBudget:
             issues=issues,
             remaining_for_turn=self.max_tokens - system_used - session_used
         )
-```
+```python
 
 ## 10.3 上下文压缩技术
 
@@ -202,7 +202,7 @@ class RecursiveSummarizer:
         
         response = await self.llm.ainvoke([HumanMessage(prompt)])
         return response.content
-```
+```python
 
 ### 10.3.3 选择性保留
 
@@ -291,7 +291,7 @@ async def retrieve_relevant_memories(
     # 4. 取 top_k
     scored.sort(key=lambda x: x[0], reverse=True)
     return [m for _, m in scored[:top_k]]
-```
+```python
 
 ### 10.4.2 记忆注入策略
 
@@ -399,7 +399,7 @@ class HybridRetriever:
         )
         
         return [doc for doc_id, _ in sorted_docs]
-```
+```python
 
 ### 10.5.2 上下文窗口扩展
 
@@ -498,7 +498,7 @@ class ThreadState(AgentState):
     project_context: Optional[str]     # 项目级上下文
     compressed: bool = False           # 是否已压缩
     last_compress_at: Optional[int]    # 上次压缩时间戳
-```
+```python
 
 ## 10.7 二次开发：企业级上下文优化
 

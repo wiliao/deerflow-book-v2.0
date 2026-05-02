@@ -59,7 +59,7 @@ agent = workflow.compile(
     checkpointer=checkpointer,
     store=store,  # 可选的持久化 store
 )
-```
+```python
 
 ### 9.3.2 Thread State 的状态管理
 
@@ -103,7 +103,7 @@ async def save_checkpoint(
         f"checkpoints/{thread_id}",
         checkpoint
     )
-```
+```python
 
 ## 9.4 Long-term Memory（长期记忆）
 
@@ -158,7 +158,7 @@ class MemoryIndex:
         self.keyword_index.update(memory)
         self.graph_index.add_entity(memory)
         self.temporal_index.insert(memory.created_at, memory.id)
-```
+```python
 
 ### 9.4.3 记忆检索
 
@@ -206,7 +206,7 @@ CONSOLIDATION_TRIGGERS = {
     "session_end": True,            # 会话结束时
     "manual": True,                 # 手动触发
 }
-```
+```python
 
 ### 9.5.2 整合流程
 
@@ -270,7 +270,7 @@ async def recursive_summarize(
         "\n".join(summarized_chunks),
         max_tokens
     )
-```
+```python
 
 ## 9.6 企业级记忆系统设计
 
@@ -372,7 +372,7 @@ class ProjectMemory:
         进行中任务：{len([t for t in self.task_history if t.status == 'in_progress'])}
         关键决策：{len(self.decisions)}
         """
-```
+```python
 
 ### 9.6.3 记忆权限控制
 
@@ -449,7 +449,7 @@ async def importance_based_compress(
     result.sort(key=lambda x: x.timestamp)
     
     return result
-```
+```python
 
 ### 9.7.2 对话式压缩
 

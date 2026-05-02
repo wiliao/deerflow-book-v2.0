@@ -63,7 +63,7 @@ DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
 - **渐进式 Skill 加载** — 按需动态加载 Skill，降低启动开销
 
 **入口点：**
-```
+```python
 packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent
 ```
 
@@ -76,7 +76,7 @@ packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent
     "path": "deerflow.agents:make_lead_agent"
   }
 }
-```
+```python
 
 ### 3.2.2 Gateway API
 
@@ -283,46 +283,30 @@ Nginx (2026)
 
 ## 3.7 中间件链详解
 
-中间件是 DeerFlow 的请求处理链，每个中间件负责特定功能：
+中间件是 DeerFlow 的请求处理链，每个中间件负责特定功能。DeerFlow 2.0 共包含 **18 个中间件**（详见第五章 5.5.1 节），按职责分为两大类：
 
-### ThreadDataMiddleware
-```python
-# 初始化每个 Thread 的工作目录
-thread_data = {
-    "workspace": "/tmp/deer-flow/threads/{thread_id}/workspace",
-    "uploads": "/tmp/deer-flow/threads/{thread_id}/uploads", 
-    "outputs": "/tmp/deer-flow/threads/{thread_id}/outputs"
-}
-```
+| 类别 | 中间件 | 职责 |
+|------|--------|------|
+| **运行时基础** | ThreadDataMiddleware | 初始化每个 Thread 的工作目录 |
+| | UploadsMiddleware | 处理用户上传的文件 |
+| | SandboxMiddleware | 获取沙箱环境 |
+| | DanglingToolCallMiddleware | 补全缺失的工具响应 |
+| | LLMErrorHandlingMiddleware | LLM 错误处理与重试 |
+| | GuardrailMiddleware | 工具调用前授权（可选） |
+| | SandboxAuditMiddleware | 沙箱命令安全审计 |
+| | ToolErrorHandlingMiddleware | 工具错误处理 |
+| **Lead Agent 专属** | SummarizationMiddleware | 上下文压缩（可选） |
+| | TodoListMiddleware | 任务跟踪（plan 模式可选） |
+| | TokenUsageMiddleware | Token 使用统计（可选） |
+| | TitleMiddleware | 自动生成标题 |
+| | MemoryMiddleware | 异步记忆更新 |
+| | ViewImageMiddleware | Vision 模型图片注入（可选） |
+| | DeferredToolFilterMiddleware | 延迟工具过滤（可选） |
+| | SubagentLimitMiddleware | 子任务数量限制（可选） |
+| | LoopDetectionMiddleware | 循环检测与阻断 |
+| | ClarificationMiddleware | 澄清请求拦截（必须最后） |
 
-### UploadsMiddleware
-```python
-# 处理用户上传的文件
-# - 解析文件类型
-# - 存储到 uploads 目录
-# - 将路径注入 context
-```
-
-### SandboxMiddleware
-```python
-# 获取沙箱环境
-sandbox = await sandbox_provider.acquire()
-# 将 sandbox 对象注入 state
-state["sandbox"] = sandbox
-```
-
-### SummarizationMiddleware
-```python
-# 当 context 超过阈值时，触发摘要压缩
-if count_tokens(messages) > summarization_threshold:
-    messages = await summarizer.compress(messages)
-```
-
-### TodoListMiddleware
-```python
-# plan_mode 时，跟踪任务列表
-# 解析 LLM 输出，更新 todos 列表
-```
+> 完整中间件接口定义、参数说明和源码解析，请参阅 **5.5.1 完整中间件顺序** 与 **5.5.3 核心中间件详解**。
 
 ## 3.8 配置体系
 

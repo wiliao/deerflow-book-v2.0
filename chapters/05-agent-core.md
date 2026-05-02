@@ -9,7 +9,7 @@ DeerFlow 的 Agent 核心入口是一个工厂函数：
 from deerflow.agents import make_lead_agent
 
 agent = make_lead_agent(config: RunnableConfig)
-```
+```python
 
 这个函数完成：
 1. 动态模型选择（支持 thinking / vision）
@@ -145,7 +145,7 @@ result = await agent.ainvoke(input, config=config)
 │                        └──────────────────┘
 │                           (循环直到完成)
 └─────────────────────────────────────────────────────────────┘
-```
+```python
 
 ### 5.4.1 节点定义
 
@@ -191,11 +191,11 @@ workflow.add_conditional_edges(
 
 中间件是 DeerFlow 请求处理的核心机制，**按顺序执行，不可跳过**。
 
-### 5.5.1 完整中间件顺序（14+个）
+### 5.5.1 完整中间件顺序（18 个）
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Middleware Chain (14+个)                      │
+│                    Middleware Chain (18 个)                      │
 ├─────────────────────────────────────────────────────────────────┤
 │  【运行时基础中间件 - build_lead_runtime_middlewares】           │
 │  1. ThreadDataMiddleware        初始化工作目录                    │
@@ -222,7 +222,7 @@ workflow.add_conditional_edges(
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**注：** 带"可选"标记的中间件根据配置动态加载，实际数量取决于运行时配置。
+**注：** 基础中间件 8 个 + Lead Agent 专属 10 个 = 18 个（其中 6 个为可选配置，根据运行时配置动态加载）。
 
 ### 5.5.2 中间件接口
 
@@ -242,7 +242,7 @@ class Middleware(ABC):
         返回：continue（继续）/ suspend（暂停）/ interrupt（中断）
         """
         raise NotImplementedError
-```
+```python
 
 ### 5.5.3 核心中间件详解
 
@@ -296,7 +296,7 @@ class SandboxMiddleware:
         }
         
         return MiddlewareResult(continue=True)
-```
+```python
 
 #### GuardrailMiddleware
 
@@ -357,7 +357,7 @@ class SummarizationMiddleware:
             )
         
         return MiddlewareResult(continue=True)
-```
+```python
 
 #### ClarificationMiddleware
 
@@ -409,7 +409,7 @@ class ToolErrorHandlingMiddleware(AgentMiddleware[AgentState]):
         except Exception as exc:
             # 构建错误 ToolMessage，让 Agent 可以继续执行
             return self._build_error_message(request, exc)
-```
+```python
 
 **功能：**
 - 捕获工具执行异常，避免整个 Agent 运行中断
@@ -463,7 +463,7 @@ class TokenUsageMiddleware(AgentMiddleware):
                 usage.get("output_tokens", "?"),
                 usage.get("total_tokens", "?"),
             )
-```
+```python
 
 **功能：**
 - 在 `after_model` 钩子中记录 Token 使用量
@@ -820,7 +820,7 @@ class CustomThreadState(ThreadState):
     user_role: Optional[str]         # 用户角色
     approval_queue: List[Approval]  # 待审批队列
     audit_context: AuditContext     # 审计上下文
-```
+```python
 
 ### 5.9.2 添加企业中间件
 
