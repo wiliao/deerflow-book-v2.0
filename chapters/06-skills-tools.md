@@ -1,5 +1,10 @@
 # 第六章 · Skills 与 Tools：能力扩展机制
 
+> **本章目标**：
+> 1. 区分 Skill 与 Tool 的概念层次与职责边界
+> 2. 掌握 Skill 的加载、渐进式加载与安全扫描机制
+> 3. 了解 MCP Server 集成与自定义 Skill 开发流程
+
 ## 6.1 概念区分：Skill vs Tool
 
 DeerFlow 中 **Skill** 和 **Tool** 是两个不同层次的概念：
@@ -212,6 +217,8 @@ class SkillRegistry:
 
 ## 6.4 渐进式 Skill 加载（Progressive Skill Loading）
 
+> **💡 最佳实践**：渐进式加载不是「按需」的同义词。设计 Skill 触发规则时，应确保规则覆盖率高（避免该加载时没加载），同时误触发率低（避免不该加载时加载了）。
+
 DeerFlow 2.0 引入的**渐进式 Skill 加载**是上下文管理的重要优化：
 
 > **核心思想**：技能不再在任务开始时全部加载到上下文中，而是**仅在需要时才加载**。
@@ -381,16 +388,17 @@ async def scan_skill_content(
 当安全扫描模型不可用时，使用保守回退策略：
 
 ```python
-# 模型调用失败时的回退
-if executable:
+async def example_scan():
+    # 模型调用失败时的回退
+    if executable:
+        return ScanResult(
+            "block",
+            "Security scan unavailable for executable content; manual review required."
+        )
     return ScanResult(
         "block",
-        "Security scan unavailable for executable content; manual review required."
+        "Security scan unavailable for skill content; manual review required."
     )
-return ScanResult(
-    "block",
-    "Security scan unavailable for skill content; manual review required."
-)
 ```
 
 ## 6.6 Skill 历史管理
@@ -412,7 +420,7 @@ skills/custom/
 
 历史以 JSON Lines 格式存储，每行一条记录：
 
-```json
+```jsonl
 {"ts": "2026-01-15T10:30:00Z", "action": "create", "author": "agent"}
 {"ts": "2026-01-15T14:20:00Z", "action": "update", "diff": "..."}
 {"ts": "2026-01-16T09:00:00Z", "action": "edit", "description": "添加新工具"}
@@ -1006,12 +1014,13 @@ async def update_skill(name: str, version: Optional[str] = None):
 
 ## 6.11 MCP Server 集成
 
+> **🏢 企业级建议**：MCP Server 的 tools 列表可能动态变化，建议在 CI/CD 流程中加入 MCP schema 校验步骤，防止 Server 升级后导致 Agent 调用失败。
+
 MCP（Model Context Protocol）是 DeerFlow 连接外部工具的标准协议。
 
 ### 6.11.1 MCP 配置
 
 ```json
-// extensions_config.json
 {
   "mcp_servers": [
     {

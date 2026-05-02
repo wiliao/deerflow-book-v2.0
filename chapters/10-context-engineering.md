@@ -1,5 +1,10 @@
 # 第十章 · Context Engineering 上下文工程
 
+> **本章目标**：
+> 1. 掌握 Context Engineering 的核心问题与 Token 预算分配
+> 2. 理解上下文分层、递归摘要与记忆检索增强
+> 3. 了解 RAG 实现与 DeerFlow 中的上下文管理
+
 ## 10.1 为什么 Context Engineering 重要
 
 LLM 的能力受限于 **context window**（上下文窗口）：
@@ -98,6 +103,8 @@ class ContextBudget:
 
 ## 10.3 上下文压缩技术
 
+> **⚠️ 注意**：递归摘要会丢失细节。对于代码审查、法律文档等「每个字都重要」的场景，不建议使用递归摘要，而应使用分块检索（chunked retrieval）。
+
 ### 10.3.1 Summarization Middleware
 
 DeerFlow 使用中间件自动压缩上下文：
@@ -132,7 +139,7 @@ class SummarizationMiddleware:
             state["messages"] = compressed
             
             return MiddlewareResult(
-                continue=True,
+                should_continue=True,
                 metadata={
                     "compressed": True,
                     "before_tokens": current_tokens,
@@ -140,7 +147,7 @@ class SummarizationMiddleware:
                 }
             )
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
 ```
 
 ### 10.3.2 递归摘要（Recursive Summarization）
@@ -323,6 +330,8 @@ def build_memory_context(
 ```
 
 ## 10.5 RAG（检索增强生成）
+
+> **🏢 企业级建议**：企业知识库的 RAG 系统应接入权限系统，确保用户只能检索到其有权访问的文档。向量数据库本身不处理权限，需在检索后增加过滤层。
 
 ### 10.5.1 混合检索
 
@@ -539,7 +548,7 @@ class CorporateKnowledgeMiddleware:
         # 4. 注入 state
         state["corporate_knowledge"] = knowledge_context
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
     
     def _build_knowledge_context(
         self,
@@ -569,7 +578,7 @@ class ProjectContextMiddleware:
         project_id = state.get("project_id")
         
         if not project_id:
-            return MiddlewareResult(continue=True)
+            return MiddlewareResult(should_continue=True)
         
         # 1. 获取项目元数据
         project = await self.project_store.get(project_id)
@@ -595,7 +604,7 @@ class ProjectContextMiddleware:
         
         state["project_context"] = context
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
 ```
 
 ## 10.8 小结

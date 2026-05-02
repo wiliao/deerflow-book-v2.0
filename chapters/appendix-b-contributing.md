@@ -95,7 +95,7 @@ mypy .
 
 # 测试
 uv run pytest
-```python
+```
 
 **代码风格：**
 - 使用 `ruff` 自动格式化
@@ -265,7 +265,7 @@ async def test_agent_execution(config):
 
 ## 相关文档
 
-- [相关文档链接](./other-doc.md)
+- 相关文档请参阅各章节源码解析部分
 ```bash
 
 ## B.6 Pull Request 流程

@@ -1,6 +1,13 @@
 # 第四章 · 项目结构与模块划分
 
+> **本章目标**：
+> 1. 熟悉 DeerFlow 的目录结构与模块划分
+> 2. 理解 SDK 入口、配置体系与二次开发路径
+> 3. 掌握前后端分离的代码组织方式
+
 ## 4.1 整体目录结构
+
+> **💡 最佳实践**：二次开发时，建议在 `skills/custom/` 目录下创建自己的 Skill，而不是直接修改 `skills/builtins/`，以避免版本升级时的合并冲突。
 
 ```
 deer-flow/
@@ -192,6 +199,8 @@ cd frontend && pnpm format:write  # prettier
 
 ## 4.5 配置体系
 
+> **🏢 企业级建议**：生产环境避免使用 `.env` 文件管理 secrets，建议使用 Vault、AWS Secrets Manager 或 Kubernetes Secrets 等专用 secret 管理工具。
+
 ### config.yaml - 主配置
 ```yaml
 models:
@@ -204,7 +213,7 @@ sandbox:
 ```
 
 ### extensions_config.json - 扩展配置
-```json
+```text
 {
   "mcp_servers": [...],
   "skills": {...}

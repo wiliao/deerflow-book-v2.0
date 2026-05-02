@@ -1,5 +1,10 @@
 # 第十二章 · 自定义 Skill 开发
 
+> **本章目标**：
+> 1. 掌握 Skill 的文件结构与 YAML 格式规范
+> 2. 理解 Skill 注册、加载、打包与发布流程
+> 3. 了解多模态输出 Skill 的开发模式与企业级示例
+
 ## 12.1 Skill 开发流程
 
 ```
@@ -18,6 +23,8 @@
 ```
 
 ## 12.2 Skill 文件结构
+
+> **💡 最佳实践**：SKILL.md 中的 `disallowed_tools` 列表应定期审视。随着 Skill 迭代，原本安全的工具可能变得危险（如新增了敏感数据访问路径）。
 
 ### 12.2.1 目录结构
 
@@ -173,6 +180,8 @@ constraints:
 ```
 
 ## 12.4 Skill 实现
+
+> **⚠️ 注意**：Skill 代码中避免使用 `eval()` 或 `exec()` 处理用户输入，即使输入经过 LLM 过滤。这是 Skill 安全扫描的重点检查项，一经发现会直接拒绝加载。
 
 ### 12.4.1 Python Executor
 
@@ -647,6 +656,8 @@ curl -X POST http://localhost:2024/runs \
 ```
 
 ## 12.8 企业级 Skill 示例
+
+> **🏢 企业级建议**：企业级 Skill 应实现完善的 `test()` 方法，覆盖正常路径、边界条件和错误路径。建议将 Skill 测试纳入 CI/CD 的必过项。
 
 ### 12.8.1 合规审查 Skill
 
@@ -1169,7 +1180,7 @@ class KanbanGenerator:
         return output_path
 ```
 
-> 完整代码见 [附录 C.5](./appendix-c-code-samples.md#c5-看板生成-skill-完整代码)。python
+> 完整代码见 [附录 C.5](./appendix-c-code-samples.md#c5-看板生成-skill-完整代码)。
 
 ### 12.9.7 多模态 Skill 通用模式
 

@@ -28,6 +28,52 @@
 
 ---
 
+## ⚡ 5 分钟快速开始
+
+### 1. Docker 一键启动
+
+```bash
+# 克隆 DeerFlow 官方仓库
+git clone https://github.com/bytedance/deerflow.git
+cd deerflow
+
+# 使用 Docker Compose 启动全套服务
+docker-compose up -d
+
+# 检查服务状态
+docker-compose ps
+```
+
+### 2. 第一条对话测试
+
+启动后，打开浏览器访问 `http://localhost:2026`，在对话窗口中输入：
+
+> @web-researcher 请研究 "LangGraph 的 checkpoint 机制"，深度：技术细节级别，输出格式：Markdown 报告
+
+DeerFlow 会自动加载 `web-researcher` Skill，执行网络搜索、信息整合，并返回结构化的研究报告。
+
+### 3. 环境变量配置
+
+复制配置文件模板并根据需要调整：
+
+```bash
+cp config.example.yaml config.yaml
+cp extensions_config.example.json extensions_config.json
+```
+
+核心环境变量：
+
+| 变量 | 说明 | 必填 |
+|------|------|------|
+| `OPENAI_API_KEY` | LLM API Key | ✅ |
+| `DEERFLOW_DATABASE_URL` | PostgreSQL 连接串 | ✅ |
+| `SANDBOX_MODE` | `local` / `docker` / `provisioner` | 可选，默认 `local` |
+| `MCP_SERVERS_CONFIG` | MCP Server 配置文件路径 | 可选 |
+
+详见 [附录 A · 配置参考](./chapters/appendix-a-config.md)。
+
+---
+
 ## 📖 目录结构
 
 ### 第一部分：理论基础
@@ -63,6 +109,8 @@
 
 - [附录 A · 配置参考](./chapters/appendix-a-config.md) - 完整配置示例
 - [附录 B · 贡献指南](./chapters/appendix-b-contributing.md) - 开发规范、PR 流程
+- [附录 C · 代码示例](./chapters/appendix-c-code-samples.md) - 多模态 Skill 完整代码
+- [附录 D · 术语表](./chapters/appendix-d-glossary.md) - 核心概念速查
 
 > ✅ 标记表示本章已基于 DeerFlow 最新源码进行深度更新
 

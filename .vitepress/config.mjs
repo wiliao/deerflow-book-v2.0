@@ -58,7 +58,9 @@ export default defineConfig({
         text: '附录',
         items: [
           { text: '附录 A · 配置参考', link: '/chapters/appendix-a-config' },
-          { text: '附录 B · 贡献指南', link: '/chapters/appendix-b-contributing' }
+          { text: '附录 B · 贡献指南', link: '/chapters/appendix-b-contributing' },
+          { text: '附录 C · 代码示例', link: '/chapters/appendix-c-code-samples' },
+          { text: '附录 D · 术语表', link: '/chapters/appendix-d-glossary' }
         ]
       }
     ],

@@ -1,5 +1,10 @@
 # 第五章 · Agent 核心：LangGraph 编排逻辑
 
+> **本章目标**：
+> 1. 深入理解 Lead Agent 的 LangGraph 编排逻辑
+> 2. 掌握中间件链的设计模式与扩展方法
+> 3. 了解 Client SDK 的使用与 Agent 缓存机制
+
 ## 5.1 核心入口：make_lead_agent
 
 DeerFlow 的 Agent 核心入口是一个工厂函数：
@@ -8,7 +13,7 @@ DeerFlow 的 Agent 核心入口是一个工厂函数：
 # 入口：packages/harness/deerflow/agents/lead_agent/agent.py
 from deerflow.agents import make_lead_agent
 
-agent = make_lead_agent(config: RunnableConfig)
+agent = make_lead_agent(config)
 ```python
 
 这个函数完成：
@@ -121,18 +126,21 @@ class ThreadState(AgentState):
 | `subagent_enabled` | bool | 启用任务委托工具 |
 
 ```python
-# 使用示例
-config = RunnableConfig(
-    configurable={
-        "thinking_enabled": True,
-        "model_name": "claude-sonnet-4-6",
-        "subagent_enabled": True,
-    }
-)
-result = await agent.ainvoke(input, config=config)
+async def run_agent():
+    # 使用示例
+    config = RunnableConfig(
+        configurable={
+            "thinking_enabled": True,
+            "model_name": "claude-sonnet-4-6",
+            "subagent_enabled": True,
+        }
+    )
+    result = await agent.ainvoke(input, config=config)
 ```
 
 ## 5.4 LangGraph 工作流结构
+
+> **⚠️ 注意**：自定义 State 的字段命名需避免与 LangGraph 内置字段冲突（如 `messages`、`is_last_step`），否则会导致不可预期的状态覆盖问题。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -145,7 +153,6 @@ result = await agent.ainvoke(input, config=config)
 │                        └──────────────────┘
 │                           (循环直到完成)
 └─────────────────────────────────────────────────────────────┘
-```python
 
 ### 5.4.1 节点定义
 
@@ -188,6 +195,8 @@ workflow.add_conditional_edges(
 ```
 
 ## 5.5 中间件链（Middleware Chain）
+
+> **💡 最佳实践**：中间件的执行顺序至关重要。SecurityMiddleware 应尽可能靠前，SummarizationMiddleware 应放在消息生成之后。新增中间件时务必测试与其他中间件的交互。
 
 中间件是 DeerFlow 请求处理的核心机制，**按顺序执行，不可跳过**。
 
@@ -271,7 +280,7 @@ class ThreadDataMiddleware:
         # 注入到 state
         state["thread_data"] = thread_data
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_should_continue=True)
 ```
 
 #### SandboxMiddleware
@@ -295,7 +304,7 @@ class SandboxMiddleware:
             "sandbox_type": sandbox.type,
         }
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_should_continue=True)
 ```python
 
 #### GuardrailMiddleware
@@ -321,11 +330,11 @@ class GuardrailMiddleware:
         decision = await self.guardrail.evaluate(tool_call, state)
         
         if decision.allowed:
-            return MiddlewareResult(continue=True)
+            return MiddlewareResult(should_should_continue=True)
         else:
             # 返回错误消息，中断执行
             return MiddlewareResult(
-                continue=False,
+                should_continue=False,
                 interrupt=True,
                 error_message=decision.reason
             )
@@ -352,11 +361,11 @@ class SummarizationMiddleware:
             state["messages"] = compressed
             
             return MiddlewareResult(
-                continue=True,
+                should_continue=True,
                 metadata={"compressed": True}
             )
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_should_continue=True)
 ```python
 
 #### ClarificationMiddleware
@@ -380,12 +389,12 @@ class ClarificationMiddleware:
                 if tool_call.name == "ask_clarification":
                     # 拦截并中断
                     return MiddlewareResult(
-                        continue=False,
+                        should_continue=False,
                         interrupt=True,
                         goto=END  # 结束当前轮次
                     )
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_should_continue=True)
 ```
 
 ### 5.5.4 新增中间件详解
@@ -806,6 +815,8 @@ client.get_artifact(thread_id, "mnt/user-data/outputs/result.txt")
 ```
 
 ## 5.9 DeerFlow 二次开发：自定义 Lead Agent
+
+> **🏢 企业级建议**：自定义 Agent 工厂时，建议保留原始 `make_lead_agent` 的调用链作为 fallback，并通过特性开关（feature flag）控制新旧 Agent 的切换，降低上线风险。
 
 ### 5.9.1 扩展 ThreadState
 

@@ -1,5 +1,10 @@
 # 第三章 · 架构总览
 
+> **本章目标**：
+> 1. 掌握 DeerFlow 的分层系统架构与各层职责
+> 2. 理解 ThreadState 与 AgentState 的状态流转
+> 3. 了解中间件链、Skill 加载与 Gateway 的协作机制
+
 ## 3.1 系统架构图
 
 DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
@@ -52,6 +57,8 @@ DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
 
 ## 3.2 核心组件详解
 
+> **🏢 企业级建议**：Gateway API 作为统一入口，建议在其前面再部署一层企业级 API 网关（如 Kong、Apigee）以处理 SSO、WAF、DDoS 防护等更高级别的安全需求。
+
 ### 3.2.1 LangGraph Server（Agent 运行时）
 
 **职责：**
@@ -63,7 +70,7 @@ DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
 - **渐进式 Skill 加载** — 按需动态加载 Skill，降低启动开销
 
 **入口点：**
-```python
+```text
 packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent
 ```
 
@@ -76,7 +83,7 @@ packages/harness/deerflow/agents/lead_agent/agent.py:make_lead_agent
     "path": "deerflow.agents:make_lead_agent"
   }
 }
-```python
+```
 
 ### 3.2.2 Gateway API
 
@@ -226,6 +233,8 @@ class ThreadState(AgentState):
 ```
 
 ## 3.5 Sandbox 系统架构
+
+> **⚠️ 注意**：Local Sandbox 虽然部署简单，但在多租户场景下存在容器逃逸风险。生产环境务必使用 K8s Provisioner 或专用沙箱服务。
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐

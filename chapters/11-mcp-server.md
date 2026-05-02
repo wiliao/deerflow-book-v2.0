@@ -1,5 +1,10 @@
 # 第十一章 · MCP Server 集成
 
+> **本章目标**：
+> 1. 理解 MCP 协议架构与 DeerFlow 中的集成位置
+> 2. 掌握 MCP Server 配置、客户端实现与工具适配
+> 3. 了解 OAuth 认证、工具缓存与错误处理策略
+
 ## 11.1 什么是 MCP
 
 MCP（Model Context Protocol）是一个开放协议，用于将 AI 模型与外部工具和数据源连接。DeerFlow 原生支持 MCP Server，通过标准化的接口扩展 Agent 能力。
@@ -49,10 +54,11 @@ Agent Core ──→ Model (LLM)
 
 ## 11.3 MCP Server 配置
 
+> **💡 最佳实践**：`auto_load: true` 虽然方便，但在 MCP Server 频繁变更（如开发环境）时会导致工具缓存频繁失效。建议在稳定后关闭 auto_load，改为手动控制刷新。
+
 ### 11.3.1 配置格式
 
 ```json
-// extensions_config.json
 {
   "mcp_servers": [
     {
@@ -108,9 +114,7 @@ Agent Core ──→ Model (LLM)
       "name": "custom-server",
       "command": ["python", "server.py"],
       "env": {
-        // 直接值
         "DEBUG": "true",
-        // 环境变量引用（以 $ 开头）
         "API_KEY": "$CUSTOM_API_KEY",
         "DB_URL": "$DATABASE_URL"
       }
@@ -123,7 +127,7 @@ Agent Core ──→ Model (LLM)
 
 ### 11.4.1 MCP Client 类
 
-```python
+```bash
 # packages/harness/deerflow/mcp/client.py
 
 class MCPClient:
@@ -475,6 +479,8 @@ MCP 支持三种传输方式，通过 `type` 字段指定：
 
 ## 11.7 OAuth 认证支持
 
+> **⚠️ 注意**：OAuth 的 `refresh_token` 也存在过期可能（虽然比 access_token 长很多）。建议实现 refresh 失败的告警机制，避免静默失效导致工具调用失败。
+
 MCP HTTP/SSE 服务器支持 OAuth 2.0 认证，DeerFlow 提供完整的 Token 管理和自动刷新机制。
 
 ### 11.7.1 OAuthTokenManager 实现
@@ -817,6 +823,8 @@ client = MultiServerMCPClient(
 
 ## 11.10 错误处理和重试
 
+> **🏢 企业级建议**：MCP Server 的不可用不应导致整个 Agent 流程崩溃。建议在 `call_tool` 层实现 graceful degradation：单个工具失败时返回空结果并记录，而不是抛出异常终止流程。
+
 ### 11.10.1 连接错误处理
 
 ```python
@@ -934,7 +942,7 @@ npx -y @modelcontextprotocol/server-github
 
 ### 11.11.3 Slack
 
-```python
+```bash
 # 需要 SLACK_BOT_TOKEN 环境变量
 python -m mcp_server_slack
 ```
@@ -949,7 +957,7 @@ python -m mcp_server_slack
 
 ```bash
 npx -y @modelcontextprotocol/server-postgres postgresql://localhost/mydb
-```python
+```text
 
 **工具：**
 - `query` - 执行查询

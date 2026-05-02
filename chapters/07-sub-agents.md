@@ -1,5 +1,10 @@
 # 第七章 · Sub-Agent 子代理体系
 
+> **本章目标**：
+> 1. 理解 Sub-Agent 的设计哲学与执行模型
+> 2. 掌握 Agent 调用机制与结果聚合策略
+> 3. 了解 LangGraph 中的 Sub-Agent 实现与多 Agent 协同
+
 ## 7.1 设计理念
 
 DeerFlow 的 Sub-Agent 体系是「分而治之」思想的体现。
@@ -40,7 +45,7 @@ class SubagentConfig:
     model: str = "inherit"       # 模型选择，"inherit" 继承父 Agent 的模型
     max_turns: int = 50          # 最大交互轮数
     timeout_seconds: int = 900   # 执行超时时间（默认15分钟）
-```python
+```
 
 配置说明：
 - `tools`: 白名单机制，为 `None` 时继承所有可用工具
@@ -355,29 +360,30 @@ async def _aexecute(
 SubagentExecutor 使用 `astream()` 实现实时消息捕获：
 
 ```python
-async for chunk in agent.astream(state, config=run_config, stream_mode="values"):
-    # 检查取消信号
-    if result.cancel_event.is_set():
-        result.status = SubagentStatus.CANCELLED
-        return result
-    
-    final_state = chunk
-    messages = chunk.get("messages", [])
-    
-    if messages:
-        last_message = messages[-1]
-        if isinstance(last_message, AIMessage):
-            message_dict = last_message.model_dump()
-            
-            # 去重检查（通过消息 ID）
-            message_id = message_dict.get("id")
-            is_duplicate = any(
-                msg.get("id") == message_id 
-                for msg in result.ai_messages
-            ) if message_id else message_dict in result.ai_messages
-            
-            if not is_duplicate:
-                result.ai_messages.append(message_dict)
+async def stream_example():
+    async for chunk in agent.astream(state, config=run_config, stream_mode="values"):
+        # 检查取消信号
+        if result.cancel_event.is_set():
+            result.status = SubagentStatus.CANCELLED
+            return result
+        
+        final_state = chunk
+        messages = chunk.get("messages", [])
+        
+        if messages:
+            last_message = messages[-1]
+            if isinstance(last_message, AIMessage):
+                message_dict = last_message.model_dump()
+                
+                # 去重检查（通过消息 ID）
+                message_id = message_dict.get("id")
+                is_duplicate = any(
+                    msg.get("id") == message_id 
+                    for msg in result.ai_messages
+                ) if message_id else message_dict in result.ai_messages
+                
+                if not is_duplicate:
+                    result.ai_messages.append(message_dict)
 ```
 
 消息流可以用于：
@@ -390,21 +396,22 @@ async for chunk in agent.astream(state, config=run_config, stream_mode="values")
 Sub-Agent 支持协作式取消（Cooperative Cancellation）：
 
 ```python
-# 1. 请求取消（由外部调用）
-def request_cancel_background_task(task_id: str) -> None:
-    with _background_tasks_lock:
-        result = _background_tasks.get(task_id)
-        if result is not None:
-            result.cancel_event.set()  # 设置取消信号
-
-# 2. 执行过程中检查取消信号
-async for chunk in agent.astream(state, config=run_config, stream_mode="values"):
-    if result.cancel_event.is_set():
-        logger.info(f"Subagent {self.config.name} cancelled by parent")
-        result.status = SubagentStatus.CANCELLED
-        result.error = "Cancelled by user"
-        result.completed_at = datetime.now()
-        return result
+async def stream_example():
+    # 1. 请求取消（由外部调用）
+    def request_cancel_background_task(task_id: str) -> None:
+        with _background_tasks_lock:
+            result = _background_tasks.get(task_id)
+            if result is not None:
+                result.cancel_event.set()  # 设置取消信号
+    
+    # 2. 执行过程中检查取消信号
+    async for chunk in agent.astream(state, config=run_config, stream_mode="values"):
+        if result.cancel_event.is_set():
+            logger.info(f"Subagent {self.config.name} cancelled by parent")
+            result.status = SubagentStatus.CANCELLED
+            result.error = "Cancelled by user"
+            result.completed_at = datetime.now()
+            return result
 ```
 
 **重要说明**：
@@ -530,6 +537,8 @@ def cleanup_background_task(task_id: str) -> None:
 ```
 
 ## 7.5 Agent 调用机制
+
+> **⚠️ 注意**：Sub-Agent 与 Lead Agent 共享同一个 `thread_id` 时，会产生消息流交叉。如果 Sub-Agent 的处理逻辑依赖消息历史，务必确认历史消息的隔离性设计。
 
 ### 7.5.1 状态共享
 
@@ -674,6 +683,8 @@ async def research_node(state: AgentState) -> AgentState:
 ```
 
 ## 7.7 DeerFlow Agent Teams 设计
+
+> **🏢 企业级建议**：多 Agent 协同团队在生产环境中建议引入「协调员 Agent」作为中央调度器，避免 Agent 间的调用关系演变为难以调试的网状结构。
 
 基于 DeerFlow 的 Sub-Agent 机制，可以设计以下 Agent Teams：
 
@@ -822,7 +833,7 @@ class TeamMemory:
 ### 7.9.1 子 Agent 上下文构建
 
 ```python
-def build_subagent_context(
+async def build_subagent_context(
     task: Task,
     team_context: TeamContext,
     agent_memory: AgentMemory

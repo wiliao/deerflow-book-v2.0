@@ -1,6 +1,13 @@
 # 第一章 · 引言：什么是 DeerFlow
 
+> **本章目标**：
+> 1. 理解 DeerFlow 的核心定位与架构组成
+> 2. 掌握 Agent Harness 的设计哲学与扩展机制
+> 3. 了解 DeerFlow 与其他 Agent 框架的差异
+
 ## 1.1 DeerFlow 是什么
+
+> **💡 最佳实践**：DeerFlow 的「Harness」定位意味着它更适合作为基础设施层使用，而非直接面向终端用户的应用层。在选型时，如果你的团队需要深度定制 Agent 行为，DeerFlow 比封装更紧密的框架更合适。
 
 DeerFlow（**D**eep **E**xploration and **E**fficient **R**esearch **Flow**）是字节跳动开源的 **Super Agent Harness**。
 
@@ -122,6 +129,8 @@ make docker-start
 ```
 
 ## 1.7 小结
+
+> **⚠️ 注意**：DeerFlow 目前处于快速迭代期，API 和配置格式可能在版本间有变动。生产环境部署前，建议锁定具体版本号并阅读 Release Notes。
 
 DeerFlow 是一个设计精良的 Super Agent 框架，2.0 版本在架构上做了彻底重构，核心亮点在于：
 

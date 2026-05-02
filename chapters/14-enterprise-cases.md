@@ -1,5 +1,10 @@
 # 第十四章 · DeerFlow 企业级应用案例
 
+> **本章目标**：
+> 1. 掌握企业级 DeerFlow 的架构设计与多租户隔离
+> 2. 理解 RBAC、审计日志与企业知识库集成方案
+> 3. 了解多模态内容生成平台与 Kubernetes 部署实践
+
 ## 14.1 案例背景：企业级应用需求分析
 
 基于企业级应用场景的需求分析，本章聚焦 DeerFlow 二次开发的具体实现路径。
@@ -61,6 +66,8 @@
 
 ## 14.3 多租户隔离实现
 
+> **💡 最佳实践**：多租户的 `isolation_mode` 默认 `strict` 最安全，但在内部工具场景下，`relaxed` 模式配合审计日志可以在安全与效率间取得更好平衡。
+
 ### 14.3.1 租户上下文
 
 ```python
@@ -120,7 +127,7 @@ class TenantMiddleware:
         quota = await self._get_quota(tenant_info)
         state["resource_quota"] = quota
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
     
     async def _get_quota(self, tenant: TenantInfo) -> ResourceQuota:
         """获取租户资源配额"""
@@ -266,7 +273,7 @@ def require_permission(*permissions: Permission):
 # 使用示例
 @router.post("/projects/{project_id}/approve")
 @require_permission(Permission.APPROVAL_GRANT)
-async def approve_action(project_id: str, ...):
+async def approve_action(project_id: str, action_type: str, approver: str):
     ...
 ```python
 
@@ -426,7 +433,7 @@ class AuditMiddleware:
         # 异步写入，不阻塞主流程
         asyncio.create_task(self.audit_storage.append(event))
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
 ```
 
 ## 14.6 企业知识库集成
@@ -505,7 +512,7 @@ class KnowledgeRetrievalMiddleware:
         # 1. 提取查询
         query = self._extract_query(state)
         if not query:
-            return MiddlewareResult(continue=True)
+            return MiddlewareResult(should_continue=True)
         
         # 2. 构建过滤器（基于租户权限）
         filters = KnowledgeFilters(
@@ -522,7 +529,7 @@ class KnowledgeRetrievalMiddleware:
             context = self._build_context(results)
             state["knowledge_context"] = context
         
-        return MiddlewareResult(continue=True)
+        return MiddlewareResult(should_continue=True)
     
     def _build_context(self, entries: List[KnowledgeEntry]) -> str:
         parts = ["## 企业知识库参考\n"]
@@ -1175,6 +1182,8 @@ class QuotaManager:
 
 ## 14.10 部署架构
 
+> **🏢 企业级建议**：K8s 部署的 `replicas` 数量应基于实际负载设置，而不是固定值。建议配置 HPA（Horizontal Pod Autoscaler）根据 CPU/内存/QPS 自动伸缩。
+
 ### 14.10.1 Kubernetes 部署
 
 ```yaml
@@ -1214,7 +1223,11 @@ spec:
             limits:
               cpu: "2000m"
               memory: "4Gi"
----
+```
+
+```yaml
+# k8s/langgraph-deployment.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:

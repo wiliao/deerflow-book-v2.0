@@ -1,5 +1,10 @@
 # 第十三章 · Human-in-the-Loop 人工审批机制
 
+> **本章目标**：
+> 1. 理解 Human-in-the-Loop 的设计哲学与审批状态模型
+> 2. 掌握审批规则引擎与等待处理机制
+> 3. 了解审批审计日志与二次开发指南
+
 ## 13.1 为什么需要 Human-in-the-Loop
 
 企业级 Agent 系统不能完全「自治」，以下场景必须保留人工决策：
@@ -106,7 +111,7 @@ class ApprovalMiddleware:
         """
         # 1. 检查是否需要审批
         if not self.requires_approval(action):
-            return MiddlewareResult(continue=True)
+            return MiddlewareResult(should_continue=True)
         
         # 2. 创建审批请求
         approval = await self.create_approval_request(action, state)
@@ -116,7 +121,7 @@ class ApprovalMiddleware:
         
         # 4. 返回暂停状态
         return MiddlewareResult(
-            continue=False,
+            should_continue=False,
             suspend=True,
             approval_id=approval.id,
             message=f"等待 {approval.approvers} 审批"
@@ -135,7 +140,7 @@ class ApprovalMiddleware:
             
             # 超过阈值必须审批
             "api_call": lambda a: a.cost > 1000,
-            "file_operation": lambda a: a.size > 10MB,
+            "file_operation": lambda a: a.size > 10 * 1024 * 1024,
             
             # 自定义规则
             "custom": self.custom_rules.check,
@@ -247,7 +252,9 @@ async def reject_action(
 
 ### 13.4.2 审批列表
 
-```python
+```text
+# ORM 伪代码示例
+# 注意：以下使用 ORM 查询语法，非标准 Python
 @router.get("/pending")
 async def list_pending_approvals(
     user: User = Depends(get_current_user),
@@ -349,6 +356,8 @@ class ApprovalNotifier:
 ```
 
 ## 13.6 审批审计日志
+
+> **🏢 企业级建议**：审计日志的存储应满足合规要求的保留期限（如金融行业通常要求 7 年）。建议使用对象存储（S3、OSS）而非数据库长期保存原始日志。
 
 ### 13.6.1 日志记录
 

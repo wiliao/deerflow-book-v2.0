@@ -1,5 +1,10 @@
 # 第八章 · Sandbox 沙箱执行环境
 
+> **本章目标**：
+> 1. 掌握 Sandbox 的架构设计与 Provider 扩展机制
+> 2. 理解 Host Bash 安全检查与命令白名单策略
+> 3. 了解 K8s Provisioner 与企业级沙箱配置
+
 ## 8.1 设计目标
 
 DeerFlow 的 Sandbox 系统解决一个核心问题：**如何在安全隔离的环境中执行 AI Agent 生成的代码？**
@@ -40,6 +45,8 @@ DeerFlow 的 Sandbox 系统解决一个核心问题：**如何在安全隔离的
 ```
 
 ## 8.3 Sandbox 接口定义
+
+> **💡 最佳实践**：实现自定义 Sandbox Provider 时，务必正确处理 `release()` 的幂等性。同一 sandbox 被多次释放不应报错，也不应导致资源泄漏。
 
 ```python
 # packages/harness/deerflow/sandbox/sandbox.py
@@ -244,6 +251,9 @@ def set_sandbox_provider(provider: SandboxProvider) -> None:
 sandbox:
   use: deerflow.sandbox.local:LocalSandboxProvider
 ```
+
+
+
 
 ```yaml
 # config.yaml - Docker 沙箱
@@ -468,7 +478,7 @@ def after_agent(self, state: SandboxMiddlewareState, runtime: Runtime) -> dict |
 │   Agent 结束 ──→ after_agent() ──→ release() ──→ 释放沙箱         │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
-```python
+```text
 
 关键点：
 1. **线程级别复用** — 同一线程内的多次工具调用共享同一个沙箱
@@ -619,7 +629,7 @@ sandbox:
 │                           返回 LOCAL_HOST_BASH_DISABLED_MESSAGE  │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
-```python
+```text
 
 安全最佳实践：
 1. **生产环境** — 始终使用 Docker/K8s Provider，禁用 Local Provider
@@ -815,7 +825,7 @@ sandbox:
       cpu_limit: "2"
       memory_limit: "4Gi"
       timeout: 3600
-```python
+```text
 
 ## 8.10 Sandbox Tools
 
@@ -1094,7 +1104,7 @@ def _write_audit(self, thread_id: str | None, command: str, verdict: str, *, tru
 
 **日志示例：**
 
-```json
+```text
 // 正常命令
 {
   "timestamp": "2025-01-15T08:30:45.123456+00:00",
@@ -1118,7 +1128,7 @@ def _write_audit(self, thread_id: str | None, command: str, verdict: str, *, tru
   "command": "rm -rf /",
   "verdict": "block"
 }
-```python
+```text
 
 **输入验证与边界保护：**
 
