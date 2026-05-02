@@ -98,6 +98,82 @@ FastAPI 应用，提供非 Agent 操作的 REST 端点。
 
 Next.js 应用，提供 React UI。
 
+### 前端架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Next.js Frontend (Port 3000)              │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐   │
+│  │   App Router    │  │   API Routes    │  │  Middleware│   │
+│  │  (app/)         │  │  (app/api/)     │  │            │   │
+│  ├─────────────────┤  ├─────────────────┤  └─────────────┘   │
+│  │                 │  │                 │                    │
+│  │ • /chat/[id]    │  │ • /api/models   │                    │
+│  │ • /projects     │  │ • /api/threads    │                    │
+│  │ • /settings     │  │ • /api/skills     │                    │
+│  │ • /artifacts    │  │ • /api/uploads    │                    │
+│  │                 │  │                 │                    │
+│  └────────┬────────┘  └────────┬────────┘                    │
+│           │                    │                             │
+│           ▼                    ▼                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │                    React Components                      │ │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐    │ │
+│  │  │ Chat UI    │  │ ThreadList │  │  Settings  │    │ │
+│  │  │            │  │            │  │            │    │ │
+│  │  │ - Message  │  │ - Search   │  │ - Models   │    │ │
+│  │  │   Stream   │  │ - Filter   │  │ - Theme    │    │ │
+│  │  │ - Input    │  │ - Sort     │  │ - Lang     │    │ │
+│  │  │ - Toolbar  │  │            │  │            │    │ │
+│  │  └────────────┘  └────────────┘  └────────────┘    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              SSE 流式消息处理 (EventSource)                │ │
+│  │                                                          │ │
+│  │  Gateway/LangGraph ──→ Server-Sent Events ──→ React State│ │
+│  │  (实时推送 Agent 输出)                                     │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**核心页面：**
+
+| 路由 | 页面 | 功能 |
+|------|------|------|
+| `/chat/[id]` | 对话页 | 消息流、工具调用展示、文件上传 |
+| `/projects` | 项目管理 | 多 Agent 协作项目列表 |
+| `/settings` | 设置页 | 模型选择、主题切换、语言设置 |
+| `/artifacts` | 产物管理 | 查看/下载 Agent 生成的文件 |
+
+**SSE 流式通信：**
+
+前端通过 EventSource 连接到 LangGraph Server 的 SSE 端点，实时接收 Agent 的输出：
+
+```typescript
+// app/chat/hooks/useAgentStream.ts
+const eventSource = new EventSource(`/api/langgraph/threads/${threadId}/runs/stream`);
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // 处理消息类型：message/tool_call/artifact/error
+  if (data.type === 'message') {
+    appendMessage(data.content);
+  } else if (data.type === 'tool_call') {
+    showToolExecution(data.tool_name, data.status);
+  }
+};
+```
+
+**状态管理：**
+
+- **React Context**：Thread 级别状态（messages、artifacts、loading）
+- **SWR**：服务端数据缓存（model list、thread list、skill registry）
+- **Zustand**：全局 UI 状态（theme、sidebar collapsed）
+
 ## 3.3 Agent 架构详解
 
 ```

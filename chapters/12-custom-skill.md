@@ -42,32 +42,53 @@ skills/
 
 ```markdown
 ---
-name: my-custom-skill
-description: 技能描述，一句话说明这个 Skill 能做什么
+name: web-researcher
+description: 自动搜索、抓取、分析网页内容，生成结构化研究报告
 version: 1.0.0
-author: Your Name
-tags: ["tag1", "tag2"]
+author: DeerFlow Community
+tags: ["research", "web", "analysis"]
 compatibility: ">=2.0.0"
 ---
 
-# Skill Name
+# Web Researcher Skill
 
 ## Overview
 
-这里是技能的详细描述...
+Web Researcher 是一个智能研究 Skill，能够根据用户查询自动执行多轮搜索、网页抓取和内容分析，最终生成带引用来源的结构化研究报告。
+
+基于 DeerFlow 的 Progressive Skill Loading 机制，按需加载，不占用启动资源。
 
 ## Capabilities
 
-- 能力 1
-- 能力 2
+- **智能搜索**：根据查询自动选择最优搜索引擎（Google/Bing/arxiv）
+- **网页抓取**：绕过常见反爬机制，提取正文内容
+- **内容分析**：使用 LLM 总结、分类、提取关键信息
+- **报告生成**：输出 Markdown 格式的结构化研究报告
+- **引用追踪**：自动记录信息来源，生成参考文献列表
 
 ## Usage
 
-描述如何使用这个技能...
+1. 在对话中引用 Skill：`@web-researcher 请研究 "DeerFlow 2.0 新特性"`
+2. 提供研究范围和深度要求
+3. 等待 Skill 自动完成搜索、抓取、分析
+4. 查看生成的研究报告和引用来源
 
 ## Examples
 
-提供使用示例...
+**例 1：技术研究**
+```
+@web-researcher 请研究 "LangGraph 的 checkpoint 机制"，深度：技术细节级别，输出格式：Markdown 报告
+```
+
+**例 2：竞品分析**
+```
+@web-researcher 请对比分析 "AutoGen vs CrewAI vs DeerFlow"，关注：架构设计、社区活跃度、企业应用案例
+```
+
+**例 3：市场调查**
+```
+@web-researcher 请调查 "2026 年 AI Agent 框架市场格局"，来源限制：官方文档、技术博客、GitHub 仓库
+```
 ```
 
 ## 12.3 Skill YAML 格式

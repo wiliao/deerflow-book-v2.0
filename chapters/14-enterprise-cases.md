@@ -1175,7 +1175,7 @@ class QuotaManager:
 
 ## 14.10 部署架构
 
-### 14.9.1 Kubernetes 部署
+### 14.10.1 Kubernetes 部署
 
 ```yaml
 # k8s/deployment.yaml
@@ -1238,7 +1238,7 @@ spec:
               value: "http://enterprise-provisioner:8002"
 ```
 
-### 14.9.2 配置管理
+### 14.10.2 配置管理
 
 ```yaml
 # config/enterprise-config.yaml
