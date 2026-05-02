@@ -1,0 +1,1 @@
+{"$schema":"https://docs.renovatebot.com/renovate-schema.json","extends":["config:recommended"],"schedule":["before 9am on monday"],"prHourlyLimit":2,"labels":["dependencies"],"packageRules":[{"matchPackagePatterns":["^actions/"],"groupName":"GitHub Actions","schedule":["at any time"]},{"matchDepTypes":["devDependencies"],"automerge":true}]}
