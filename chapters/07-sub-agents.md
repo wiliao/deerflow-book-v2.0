@@ -17,11 +17,11 @@ Sub-Agent 的优势：
 - 可复用：一次开发，多次调用
 - 可组合：多个 Agent 协同完成复杂任务
 
-## 7.2 Subagent 配置与类型
+## 7.2 Sub-Agent 配置与类型
 
-### 7.2.1 SubagentConfig 配置定义
+### 7.2.1 Sub-AgentConfig 配置定义
 
-每个 Subagent 通过 `SubagentConfig` 进行配置：
+每个 Sub-Agent 通过 `SubagentConfig` 进行配置：
 
 ```python
 from dataclasses import dataclass, field
@@ -49,7 +49,7 @@ class SubagentConfig:
 
 ### 7.2.2 任务状态机
 
-Subagent 执行过程中会经历以下状态：
+Sub-Agent 执行过程中会经历以下状态：
 
 ```python
 from enum import Enum
@@ -98,9 +98,9 @@ class SubagentResult:
     )  # 协作取消信号
 ```
 
-### 7.2.4 内置 Subagent 类型
+### 7.2.4 内置 Sub-Agent 类型
 
-DeerFlow 内置以下 Subagent：
+DeerFlow 内置以下 Sub-Agent：
 
 #### general-purpose（通用子代理）
 
@@ -190,16 +190,16 @@ For each command or group of commands:
 
 #### Agent 类型汇总
 
-| Subagent | 用途 | 可用性 |
+| Sub-Agent | 用途 | 可用性 |
 |----------|------|--------|
 | `general-purpose` | 通用复杂任务 | 始终可用 |
 | `bash` | 命令执行序列 | 仅 Host Bash 环境 |
 
-## 7.3 SubagentExecutor 执行引擎
+## 7.3 Sub-AgentExecutor 执行引擎
 
 ### 7.3.1 类结构与初始化
 
-`SubagentExecutor` 是执行 Subagent 的核心引擎：
+`SubagentExecutor` 是执行 Sub-Agent 的核心引擎：
 
 ```python
 class SubagentExecutor:
@@ -381,13 +381,13 @@ async for chunk in agent.astream(state, config=run_config, stream_mode="values")
 ```
 
 消息流可以用于：
-- 实时显示 Subagent 的思考过程
+- 实时显示 Sub-Agent 的思考过程
 - 前端进度展示
 - 调试和审计
 
 ### 7.3.4 协作取消机制
 
-Subagent 支持协作式取消（Cooperative Cancellation）：
+Sub-Agent 支持协作式取消（Cooperative Cancellation）：
 
 ```python
 # 1. 请求取消（由外部调用）
