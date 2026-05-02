@@ -868,7 +868,312 @@ class TaskDecomposer:
         return tasks
 ```
 
-## 14.9 部署架构
+## 14.9 多模态内容生成平台
+
+企业级应用中，内容生成不再是单一的文本输出。DeerFlow 的多模态输出能力使企业能够自动化生成 PPT、培训视频、数据看板、播客等内容，大幅提升内部沟通效率和外部营销能力。
+
+### 14.9.1 平台架构
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                Enterprise Multimodal Content Platform                 │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │   内容源    │  │  AI 处理层  │  │  输出格式   │  │  分发渠道   │  │
+│  ├─────────────┤  ├─────────────┤  ├─────────────┤  ├─────────────┤  │
+│  │ • 文档      │  │ • 语义理解  │  │ • PPT      │  │ • 企业微信  │  │
+│  │ • 数据库    │  │ • 内容规划  │  │ • 视频     │  │ • 飞书      │  │
+│  │ • API       │  │ • 生成编排  │  │ • 播客     │  │ • 邮件      │  │
+│  │ • 人工输入  │  │ • 质量审核  │  │ • 看板     │  │ • 内网门户  │  │
+│  │ • 会议记录  │  │             │  │ • 信息图   │  │ • 知识库    │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  │
+│                                                                       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    企业级特性层                                │   │
+│  │  • 模板管理（品牌规范）  • 审批工作流  • 版本控制  • 版权管理  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### 14.9.2 典型应用场景
+
+| 场景 | 输入 | 输出 | 价值 |
+|------|------|------|------|
+| **季度汇报** | 财务数据 + 项目总结 | PPT（品牌模板） | 节省 2-3 天制作时间 |
+| **新员工培训** | 产品文档 + 流程说明 | 视频课程 | 标准化培训内容 |
+| **技术播客** | 技术博客文章 | 音频播客 | 扩大内容受众 |
+| **项目进度** | 任务数据（Jira/飞书） | 可视化看板 | 实时同步团队状态 |
+| **营销物料** | 产品卖点 + 视觉素材 | 宣传视频 | 快速响应市场活动 |
+
+### 14.9.3 品牌合规控制
+
+企业级多模态输出必须遵循品牌规范：
+
+```python
+# enterprise/multimodal/brand_controller.py
+
+@dataclass
+class BrandGuidelines:
+    """品牌规范"""
+    
+    primary_color: str = "#1E3A5F"
+    secondary_color: str = "#4A90E2"
+    font_family: str = "PingFang SC, Microsoft YaHei"
+    logo_url: str = "https://cdn.company.com/logo.png"
+    watermark: str = "CONFIDENTIAL"
+    
+    # PPT 模板
+    ppt_template: str = "templates/enterprise_ppt.pptx"
+    
+    # 视频片头片尾
+    video_intro: str = "assets/intro.mp4"
+    video_outro: str = "assets/outro.mp4"
+
+class BrandController:
+    """品牌控制器 — 确保所有输出符合企业规范"""
+    
+    def __init__(self, guidelines: BrandGuidelines):
+        self.guidelines = guidelines
+    
+    def apply_to_ppt(self, ppt_path: str) -> str:
+        """应用品牌规范到 PPT"""
+        from pptx import Presentation
+        
+        prs = Presentation(ppt_path)
+        
+        # 应用主题色
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        paragraph.font.color.rgb = RgbColor.from_string(
+                            self.guidelines.primary_color
+                        )
+        
+        # 添加 Logo
+        for slide in prs.slides:
+            left = Inches(9.5)
+            top = Inches(0.2)
+            slide.shapes.add_picture(
+                self.guidelines.logo_url,
+                left, top,
+                width=Inches(0.8)
+            )
+        
+        # 保存
+        output_path = ppt_path.replace(".pptx", "_branded.pptx")
+        prs.save(output_path)
+        return output_path
+    
+    def apply_to_video(self, video_path: str) -> str:
+        """应用品牌规范到视频"""
+        from moviepy.editor import (
+            VideoFileClip, concatenate_videoclips
+        )
+        
+        # 添加片头片尾
+        intro = VideoFileClip(self.guidelines.video_intro)
+        main = VideoFileClip(video_path)
+        outro = VideoFileClip(self.guidelines.video_outro)
+        
+        final = concatenate_videoclips([intro, main, outro])
+        
+        output_path = video_path.replace(".mp4", "_branded.mp4")
+        final.write_videofile(output_path)
+        return output_path
+```
+
+### 14.9.4 审批工作流
+
+多模态内容发布前需要审批：
+
+```python
+# enterprise/multimodal/approval_workflow.py
+
+class ContentApprovalWorkflow:
+    """内容审批工作流"""
+    
+    def __init__(self):
+        self.stages = [
+            "auto_review",      # 自动合规检查
+            "department_lead",  # 部门负责人
+            "brand_team",       # 品牌团队
+            "legal_review",     # 法务审核（敏感内容）
+            "final_publish"     # 发布
+        ]
+    
+    async def submit_for_approval(
+        self,
+        content: MultimodalOutput,
+        submitter: User,
+        department: str
+    ) -> str:
+        """提交内容审批"""
+        
+        # 1. 自动检查
+        auto_result = await self._auto_review(content)
+        if not auto_result.passed:
+            return f"REJECTED: {auto_result.reason}"
+        
+        # 2. 创建审批工单
+        ticket = ApprovalTicket(
+            content_id=content.file_path,
+            submitter=submitter.id,
+            department=department,
+            stages=self.stages,
+            current_stage="department_lead"
+        )
+        
+        # 3. 通知部门负责人
+        await self._notify_approver(
+            ticket,
+            role="department_lead",
+            department=department
+        )
+        
+        return ticket.id
+    
+    async def _auto_review(self, content: MultimodalOutput) -> ReviewResult:
+        """自动合规审查"""
+        
+        checks = []
+        
+        # 检查敏感词
+        if content.type in ["ppt", "video", "podcast"]:
+            text_content = await self._extract_text(content)
+            sensitive_words = self._check_sensitive_words(text_content)
+            checks.append(len(sensitive_words) == 0)
+        
+        # 检查品牌元素
+        if content.type == "ppt":
+            has_brand_elements = self._check_brand_elements(content.file_path)
+            checks.append(has_brand_elements)
+        
+        # 检查文件大小
+        checks.append(content.size_bytes < 100 * 1024 * 1024)  # 100MB
+        
+        return ReviewResult(
+            passed=all(checks),
+            reason="Auto review passed" if all(checks) else "Failed auto checks"
+        )
+```
+
+### 14.9.5 与现有系统的集成
+
+```python
+# enterprise/multimodal/integrations.py
+
+class EnterpriseIntegrationHub:
+    """企业集成中心"""
+    
+    async def sync_to_feishu(
+        self,
+        content: MultimodalOutput,
+        chat_id: str
+    ):
+        """同步内容到飞书群"""
+        # 使用飞书机器人 API 发送文件
+        pass
+    
+    async def sync_to_wecom(
+        self,
+        content: MultimodalOutput,
+        room_id: str
+    ):
+        """同步内容到企业微信群"""
+        # 使用企业微信 API 发送文件
+        pass
+    
+    async def publish_to_knowledge_base(
+        self,
+        content: MultimodalOutput,
+        category: str
+    ):
+        """发布到企业知识库"""
+        # 上传到内部 Wiki/Confluence/飞书文档
+        pass
+    
+    async def send_email_digest(
+        self,
+        contents: list[MultimodalOutput],
+        recipients: list[str]
+    ):
+        """发送邮件摘要"""
+        # 生成邮件，附带内容链接
+        pass
+```
+
+### 14.9.6 成本与配额管理
+
+企业级多模态生成涉及 API 调用成本，需要配额管理：
+
+```python
+# enterprise/multimodal/quota_manager.py
+
+@dataclass
+class ModelCost:
+    """模型成本配置"""
+    
+    model: str
+    input_price_per_1k: float   # 美元
+    output_price_per_1k: float  # 美元
+    image_price_per_image: float
+    audio_price_per_minute: float
+
+class QuotaManager:
+    """配额管理器"""
+    
+    COST_TABLE = {
+        "dall-e-3": ModelCost("dall-e-3", 0, 0, 0.04, 0),
+        "gpt-4o": ModelCost("gpt-4o", 0.005, 0.015, 0, 0),
+        "tts-1": ModelCost("tts-1", 0, 0, 0, 0.015),
+    }
+    
+    def __init__(self, department_budgets: dict):
+        self.budgets = department_budgets
+        self.usage = defaultdict(lambda: defaultdict(float))
+    
+    def check_quota(
+        self,
+        department: str,
+        model: str,
+        estimated_cost: float
+    ) -> bool:
+        """检查配额是否充足"""
+        
+        budget = self.budgets.get(department, 1000.0)  # 默认 $1000
+        used = sum(self.usage[department].values())
+        
+        return (used + estimated_cost) <= budget
+    
+    def record_usage(
+        self,
+        department: str,
+        model: str,
+        tokens_in: int = 0,
+        tokens_out: int = 0,
+        images: int = 0,
+        audio_minutes: float = 0
+    ):
+        """记录使用量"""
+        
+        cost_config = self.COST_TABLE.get(model)
+        if not cost_config:
+            return
+        
+        cost = (
+            tokens_in / 1000 * cost_config.input_price_per_1k +
+            tokens_out / 1000 * cost_config.output_price_per_1k +
+            images * cost_config.image_price_per_image +
+            audio_minutes * cost_config.audio_price_per_minute
+        )
+        
+        self.usage[department][model] += cost
+```
+
+## 14.10 部署架构
 
 ### 14.9.1 Kubernetes 部署
 
@@ -983,7 +1288,7 @@ enterprise:
       timeout_seconds: 3600
 ```
 
-## 14.10 小结
+## 14.11 小结
 
 本章展示了基于 DeerFlow 构建企业级应用的完整开发路径：
 

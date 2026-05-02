@@ -29,9 +29,10 @@ DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
 │                 │ │                 │ │                 │
 │  Agent Runtime  │ │  Models API     │ │  Next.js App    │
 │  Thread Mgmt    │ │  MCP Config     │ │  React UI       │
-│  SSE Streaming  │ │  Skills Mgmt   │ │  Chat Interface │
+│  SSE Streaming  │ │  Skills Mgmt    │ │  Chat Interface │
 │  Checkpointing  │ │  File Uploads   │ │                 │
-│                 │ │  Artifacts      │ │                 │
+│  Progressive    │ │  Artifacts      │ │                 │
+│  Skill Loading  │ │                 │ │                 │
 └────────┬────────┘ └────────┬────────┘ └─────────────────┘
          │                   │
          │     ┌─────────────┘
@@ -59,6 +60,7 @@ DeerFlow 采用典型的分层架构，通过 Nginx 统一入口：
 - 中间件链执行
 - Tool 执行编排
 - SSE 流式响应
+- **渐进式 Skill 加载** — 按需动态加载 Skill，降低启动开销
 
 **入口点：**
 ```
@@ -189,6 +191,7 @@ Nginx (2026)
     │                      Agent Runtime
     │                         │
     │                         ├─→ Middleware Chain
+    │                         ├─→ Progressive Skill Loading（按需加载）
     │                         ├─→ Model (LLM)
     │                         ├─→ Tools
     │                         ├─→ Sub-Agents
@@ -285,7 +288,72 @@ sandbox:
 }
 ```
 
-## 3.9 小结
+## 3.9 渐进式 Skill 加载的架构位置
+
+Progressive Skill Loading 是 DeerFlow 2.0 引入的核心特性，它在架构层面解决了 Skill 过多导致的启动延迟问题。
+
+### 3.9.1 架构定位
+
+```
+┌───────────────────────────────────────────────────────────────────┐
+│                    Progressive Skill Loading                      │
+├───────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐           │
+│  │  Skill      │    │  Lazy       │    │  On-Demand  │           │
+│  │  Registry   │───→│  Loader     │───→│  Executor   │           │
+│  │             │    │             │    │             │           │
+│  │ - ClawHub   │    │ - 解析      │    │ - 初始化    │           │
+│  │ - Local     │    │   依赖树    │    │ - 注入      │           │
+│  │ - Builtin   │    │ - 按需拉取  │    │   工具集    │           │
+│  └─────────────┘    └─────────────┘    └─────────────┘           │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+**在 LangGraph Server 中的位置：**
+- 位于 **Middleware Chain 之后、Model 之前**
+- 拦截用户请求中的 Skill 引用（如 `@skill_name`）
+- 动态解析 Skill 依赖树，按需加载到当前 Thread 的上下文中
+
+### 3.9.2 加载时机
+
+| 触发时机 | 行为 | 性能影响 |
+|----------|------|----------|
+| Thread 创建 | 加载 `extensions_config.json` 中 `enabled: true` 的 Skill | 基础开销 |
+| 用户显式引用 | 解析 `@skill_name`，懒加载对应 Skill | 首次延迟 |
+| Skill 依赖解析 | 递归加载被引用的子 Skill | 级联加载 |
+| 热更新 | 检测到 Skill 版本变更时重新加载 | 运行时更新 |
+
+### 3.9.3 与其他组件的协作
+
+**与 Middleware Chain 的协作：**
+```
+Middleware Chain
+    │
+    ├─→ ThreadDataMiddleware（初始化目录）
+    ├─→ UploadsMiddleware（处理上传）
+    ├─→ SandboxMiddleware（获取沙箱）
+    ├─→ ProgressiveSkillMiddleware ← 新增：解析并加载 Skill
+    │      │
+    │      ▼
+    │   Skill Registry → Lazy Loader → Tool Injection
+    │
+    └─→ SummarizationMiddleware（上下文压缩）
+```
+
+**与 Gateway API 的协作：**
+- Gateway 的 `/api/skills` 端点提供 Skill 元数据查询
+- Progressive Loader 通过内部 API 获取 Skill 的依赖关系和加载策略
+
+### 3.9.4 设计优势
+
+1. **启动加速**：Agent 启动时无需加载全部 Skill，仅加载必需的基础集合
+2. **内存优化**：未使用的 Skill 不占用运行时内存
+3. **依赖自治**：Skill 声明自己的依赖，Loader 自动解析依赖树
+4. **热插拔**：支持运行时更新 Skill 而不重启 Agent
+
+## 3.10 小结
 
 DeerFlow 的架构设计体现了以下原则：
 

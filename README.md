@@ -55,9 +55,9 @@
 | 章节 | 内容亮点 | 源码文件 |
 |------|----------|----------|
 | [第十一章 · MCP Server 集成](./chapters/11-mcp-server.md) ✅ | **OAuth 2.0 认证**、**工具缓存**、**多传输方式** (stdio/sse/http) | `mcp/oauth.py`, `mcp/cache.py`, `mcp/client.py` |
-| [第十二章 · 自定义 Skill 开发](./chapters/12-custom-skill.md) | Skill 开发流程、打包发布、调试测试 | - |
+| [第十二章 · 自定义 Skill 开发](./chapters/12-custom-skill.md) | **多模态输出 Skill**（PPT/播客/图片/视频/看板）| - |
 | [第十三章 · Human-in-the-Loop](./chapters/13-human-in-the-loop.md) | 审批节点设计、审批中间件、审计日志 | - |
-| [第十四章 · 企业级应用案例](./chapters/14-enterprise-cases.md) | 多租户隔离、RBAC、审计系统、知识库集成 | - |
+| [第十四章 · 企业级应用案例](./chapters/14-enterprise-cases.md) | 多租户隔离、RBAC、审计系统、**多模态内容平台**、知识库集成 | - |
 
 ### 附录
 
@@ -112,7 +112,10 @@
 | 章节 | 更新内容 |
 |------|----------|
 | **Chapter 01** | 新增核心特性：Progressive Skill Loading、InfoQuest、多模态输出 |
+| **Chapter 03** | 新增渐进式 Skill 加载在架构中的位置（3.9 节） |
 | **Chapter 06** | 新增渐进式 Skill 加载机制、InfoQuest 集成 |
+| **Chapter 12** | 新增多模态输出 Skill 开发（PPT/播客/图片/视频/看板） |
+| **Chapter 14** | 新增企业级多模态内容生成平台（14.9 节） |
 
 ### 2026-04-09 重大更新
 
@@ -144,8 +147,8 @@
 ## 📌 版本信息
 
 - **DeerFlow 版本**: 2.0
-- **书籍版本**: 2026.04
-- **最后更新**: 2026-04-09
+- **书籍版本**: 2026.05
+- **最后更新**: 2026-05-02
 
 ---
 
