@@ -153,6 +153,17 @@ cp extensions_config.example.json extensions_config.json
 
 ## 🔄 最新更新
 
+### 2026-06-21 重大更新
+
+基于 DeerFlow 2.0 当前源码，对 Memory 相关内容进行了校正：
+
+| 章节 | 更新内容 |
+|------|----------|
+| **Chapter 02** | 明确内置 Memory 不使用 embedding、向量数据库或相似度检索 |
+| **Chapter 09** | 重写 Memory 系统章节，改为 JSON profile/facts、LLM 更新、MemoryMiddleware、prompt 注入 |
+| **Chapter 10** | 将 Memory 检索示例改为 JSON facts 注入，并区分外部 RAG 扩展 |
+| **Appendix A/D** | 更新 Memory 配置与术语解释 |
+
 ### 2026-05-02 重大更新
 
 基于 DeerFlow 2.0 最新版本进展（2026 年 4 月），对以下章节进行了更新：
@@ -195,8 +206,8 @@ cp extensions_config.example.json extensions_config.json
 ## 📌 版本信息
 
 - **DeerFlow 版本**: 2.0
-- **书籍版本**: 2026.05
-- **最后更新**: 2026-05-02
+- **书籍版本**: 2026.06
+- **最后更新**: 2026-06-21
 
 ---
 
