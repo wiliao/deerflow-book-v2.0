@@ -105,7 +105,7 @@ class ContextBudget:
             issues=issues,
             remaining_for_turn=self.max_tokens - system_used - session_used
         )
-```python
+```
 
 ## 10.3 上下文压缩技术
 
@@ -265,73 +265,66 @@ async def selective_compress(
     return selected
 ```
 
-## 10.4 记忆检索增强
+## 10.4 Memory 注入增强
 
-### 10.4.1 上下文感知的记忆检索
+### 10.4.1 基于 JSON Facts 的记忆选择
 
 ```python
-async def retrieve_relevant_memories(
-    query: str,
-    current_context: Dict,
-    top_k: int = 5,
-    min_relevance: float = 0.7
-) -> List[MemoryRecord]:
+def select_injectable_facts(
+    memory_data: dict,
+    max_facts: int = 5,
+    min_confidence: float = 0.7,
+) -> list[dict]:
     """
-    基于当前上下文检索相关记忆
+    DeerFlow 2.0 内置 Memory 不做 embedding、向量库或相似度检索。
+    它从 JSON profile/facts 中选择高置信度事实，再注入 prompt。
     """
-    # 1. 向量检索
-    vector_results = await memory_index.search(
-        query=query,
-        top_k=top_k * 2  # 先多取一些，后面过滤
+    facts = memory_data.get("facts", [])
+    candidates = [
+        fact for fact in facts
+        if fact.get("confidence", 0) >= min_confidence
+    ]
+
+    candidates.sort(
+        key=lambda fact: (
+            fact.get("confidence", 0),
+            fact.get("updated_at", ""),
+        ),
+        reverse=True,
     )
-    
-    # 2. 时效性过滤
-    recency_weight = 0.3
-    time_decay = lambda m: math.exp(
-        -recency_weight * days_since(m.created_at)
-    )
-    
-    # 3. 相关性 + 时效性 综合评分
-    scored = []
-    for memory in vector_results:
-        relevance = memory.embedding_score
-        recency = time_decay(memory)
-        combined = relevance * 0.7 + recency * 0.3
-        
-        if combined >= min_relevance:
-            scored.append((combined, memory))
-    
-    # 4. 取 top_k
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [m for _, m in scored[:top_k]]
-```python
+    return candidates[:max_facts]
+```
 
 ### 10.4.2 记忆注入策略
 
 ```python
 def build_memory_context(
-    memories: List[MemoryRecord],
+    memory_data: dict,
     max_tokens: int
 ) -> str:
     """
-    将记忆构建为可注入的上下文
+    将 JSON Memory 构建为可注入的上下文
     """
-    context_parts = ["## 相关记忆\n"]
+    context_parts = ["## User Memory\n"]
     current_tokens = count_tokens("\n".join(context_parts))
-    
-    for memory in memories:
-        memory_text = f"""
-### {memory.memory_type}: {memory.source}
-{memory.content}
-"""
+
+    for summary in memory_data.get("user_profile", {}).get("summary", []):
+        summary_text = f"- {summary}\n"
+        summary_tokens = count_tokens(summary_text)
+        if current_tokens + summary_tokens <= max_tokens:
+            context_parts.append(summary_text)
+            current_tokens += summary_tokens
+
+    for fact in select_injectable_facts(memory_data):
+        memory_text = f"- [{fact.get('category', 'fact')}] {fact['content']}\n"
         memory_tokens = count_tokens(memory_text)
-        
+
         if current_tokens + memory_tokens <= max_tokens:
             context_parts.append(memory_text)
             current_tokens += memory_tokens
         else:
             break
-    
+
     return "\n".join(context_parts)
 ```
 
@@ -344,7 +337,8 @@ def build_memory_context(
 ```python
 class HybridRetriever:
     """
-    混合检索器：向量 + 关键词 + 图
+    混合检索器：向量 + 关键词 + 图。
+    这是外部 RAG / 企业知识库扩展，不是 DeerFlow 内置 Memory 的实现。
     """
     
     def __init__(
@@ -645,4 +639,3 @@ class ProjectContextMiddleware:
 ---
 
 **下一步**：阅读第十一章，了解 MCP Server 的协议规范与 DeerFlow 集成方式。
-

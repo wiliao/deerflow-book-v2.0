@@ -791,8 +791,8 @@ class AgentMemory:
         # 2. 项目记忆：当前项目上下文
         self.project_memory: Dict = {}
         
-        # 3. 长期记忆：跨项目知识
-        self.long_term_memory: VectorStore = None
+        # 3. 长期记忆：DeerFlow Memory JSON profile/facts
+        self.memory_profile: dict = {}
     
     async def remember(self, key: str, value: Any):
         """存储记忆"""
@@ -800,10 +800,17 @@ class AgentMemory:
         if len(self.working_memory) > 10:
             await self._consolidate()
     
-    async def recall(self, query: str) -> List[Memory]:
+    async def recall(self, task_type: str) -> list[str]:
         """检索记忆"""
-        # 向量检索
-        return await self.long_term_memory.search(query)
+        # DeerFlow 内置 Memory 不做向量检索；按 fact category/confidence
+        # 选择可注入的 profile/facts。
+        facts = self.memory_profile.get("facts", [])
+        return [
+            fact["content"]
+            for fact in facts
+            if fact.get("confidence", 0) >= 0.7
+            and fact.get("category") in {"preference", "behavior", "correction", "context"}
+        ]
 ```python
 
 ### 7.8.2 团队记忆共享
@@ -978,4 +985,3 @@ DeerFlow 的 Agent Teams 可以在此基础上扩展：
 ---
 
 **下一步**：阅读第八章，掌握 Sandbox 的安全隔离与执行环境设计。
-

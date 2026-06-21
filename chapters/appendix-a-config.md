@@ -345,6 +345,23 @@ make config-upgrade
 
 ## A.6 企业级扩展配置
 
+DeerFlow 2.0 的内置 Memory 配置围绕 JSON profile/facts、LLM 更新队列与 prompt 注入展开；它不包含 embedding 模型、向量数据库或相似度检索配置。
+
+```yaml
+memory:
+  enabled: true
+  storage_path: memory.json
+  debounce_seconds: 30
+  model_name: null
+  max_facts: 100
+  fact_confidence_threshold: 0.7
+  injection_enabled: true
+  max_injection_tokens: 2000
+  token_counting: tiktoken
+```
+
+企业知识库、向量检索和图谱检索应作为外部 RAG 服务接入，不应与内置 Memory 的用户 profile/facts 混为同一层。
+
 ```yaml
 # 企业级配置扩展
 
@@ -374,7 +391,7 @@ enterprise:
       bucket: enterprise-audit
     retention_days: 2555
   
-  # 企业知识库
+  # 企业知识库：外部 RAG 服务，不是内置 Memory
   knowledge_base:
     enabled: true
     providers:

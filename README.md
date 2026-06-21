@@ -93,7 +93,7 @@ cp extensions_config.example.json extensions_config.json
 | [第六章 · Skills 与 Tools](./chapters/06-skills-tools.md) ✅ | **Skill 安全扫描**、**历史管理**、**安装器实现** | `skills/security_scanner.py`, `skills/manager.py`, `skills/installer.py` |
 | [第七章 · Sub-Agent 体系](./chapters/07-sub-agents.md) ✅ | **SubagentExecutor**、**任务状态机**、**背景任务管理** | `subagents/executor.py`, `subagents/config.py` |
 | [第八章 · Sandbox 环境](./chapters/08-sandbox.md) ✅ | **Provider 模式**、**中间件生命周期**、**安全审计** | `sandbox/sandbox_provider.py`, `sandbox/middleware.py`, `sandbox/security.py` |
-| [第九章 · Memory 系统](./chapters/09-memory.md) | Working Memory、Long-term Memory、Consolidation | `agents/memory/` |
+| [第九章 · Memory 系统](./chapters/09-memory.md) ✅ | **JSON Profile/Facts**、**LLM 更新**、**MemoryMiddleware**、**Prompt 注入** | `agents/memory/storage.py`, `agents/memory/updater.py`, `agents/middlewares/memory_middleware.py` |
 | [第十章 · Context Engineering](./chapters/10-context-engineering.md) | 上下文压缩、RAG、Token 预算分配 | - |
 
 ### 第三部分：二次开发实战 ⭐️

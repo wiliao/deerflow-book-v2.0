@@ -1,527 +1,374 @@
 # 第九章 · Memory 记忆系统
 
-
 > **本章目标**：
-> 1. 掌握 DeerFlow 的记忆分层模型（短期/长期/持久化）
-> 2. 理解记忆查询、存储与 Recall 机制的实现
-> 3. 了解企业级知识库集成与记忆隐私保护策略
+> 1. 理解 DeerFlow 2.0 Memory 的真实实现：JSON profile/facts + LLM 更新。
+> 2. 掌握 `MemoryStorage`、`MemoryMiddleware`、`MemoryUpdater` 和 prompt 注入流程。
+> 3. 区分内置 Memory 与企业外部 RAG/知识库，避免把 Memory 误写成向量数据库。
 
-> **本章目标**：
-> 1. 理解 DeerFlow 的记忆分层体系与存储后端
-> 2. 掌握记忆检索、去重与整合的实现机制
-> 3. 了解项目级记忆与上下文压缩策略
+DeerFlow 2.0 的 Memory 系统不是 embedding/vector DB，也不是语义相似度检索系统。它的核心实现是：
 
-## 9.1 记忆系统的必要性
+1. 用 JSON 文件保存用户画像、历史摘要和 facts。
+2. 用 LLM 从对话中提取事实、偏好、纠错和上下文。
+3. 按用户和 Agent 维度隔离 memory 文件。
+4. 在运行时把格式化后的 memory 注入提示词。
+5. 通过异步队列和 debounce 降低更新频率。
 
-长时任务的 Agent 面临的核心问题：**上下文窗口有限**。
+这一点很重要：当前源码中没有 embedding 字段、没有 FAISS/Chroma/Milvus 等向量索引，也没有基于 similarity score 的 Memory recall。它更接近一个由 LLM 维护的结构化用户 profile。
 
-随着对话历史增长：
-- 早期的重要信息被稀释
-- 模型容易「遗忘」用户的核心需求
-- 多个子任务之间的状态难以保持一致
+## 9.1 设计目标
 
-DeerFlow 的 Memory 系统旨在解决：如何在有限的上下文窗口内，保持 Agent 对任务、项目、协作历史的完整理解。
+Memory 的目标不是“召回语义最相近片段”，而是让 Agent 在后续任务里知道稳定、可操作的用户背景。
 
-## 9.2 记忆分层架构
+| 目标 | 实现方式 |
+|------|----------|
+| 记住用户偏好 | LLM 从对话提取 preference / behavior facts |
+| 记住项目上下文 | 写入 workContext、topOfMind、history summaries |
+| 记住纠错 | detect correction 后写入 high-confidence correction facts |
+| 控制上下文长度 | `format_memory_for_injection()` 按 token budget 注入 |
+| 多用户隔离 | storage path 按 `user_id` 和 `agent_name` 解析 |
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Memory System                            │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │   Working       │    │    Long-term    │                │
-│  │   Memory        │    │    Memory       │                │
-│  │                 │    │                 │                │
-│  │  (Current       │    │  (Persistent    │                │
-│  │   Session)       │    │   Knowledge)    │                │
-│  │                 │    │                 │                │
-│  │  - messages     │    │  - facts        │                │
-│  │  - context      │    │  - patterns     │                │
-│  │  - artifacts   │    │  - preferences   │                │
-│  └────────┬────────┘    └────────┬────────┘                │
-│           │                       │                          │
-│           └───────────┬───────────┘                          │
-│                       ▼                                       │
-│            ┌─────────────────┐                              │
-│            │   Memory         │                               │
-│            │   Controller     │                              │
-│            │                 │                               │
-│            │  - consolidation│                              │
-│            │  - retrieval    │                              │
-│            │  - compression  │                              │
-│            └─────────────────┘                              │
-└─────────────────────────────────────────────────────────────┘
+DeerFlow 选择这种实现，是因为长期个人/项目记忆更需要稳定、可解释和任务相关，而不只是语义相近。
+
+## 9.2 模块结构
+
+```text
+backend/packages/harness/deerflow/agents/memory/
+├── __init__.py               # Memory 模块导出
+├── storage.py                # MemoryStorage / FileMemoryStorage
+├── updater.py                # LLM 更新、JSON 解析、facts 增删
+├── queue.py                  # 异步更新队列与 debounce
+├── prompt.py                 # 更新 prompt、注入格式化
+├── message_processing.py     # 过滤消息、检测 correction/reinforcement
+└── summarization_hook.py     # 与 SummarizationMiddleware 交互
 ```
 
-## 9.3 Working Memory（工作记忆）
+Agent 侧入口：
 
-> **💡 最佳实践**：Working Memory 的 `max_messages` 默认值 50 条适合短对话，但对于长时研究任务（如 2 小时以上的分析），建议提升到 100-150 条或启用自动摘要。
-
-### 9.3.1 LangGraph Checkpointing
-
-DeerFlow 利用 LangGraph 的 Checkpointing 机制实现 Working Memory：
-
-```python
-from langgraph.checkpoint.memory import MemorySaver
-
-# 创建带 checkpoint 的 Agent
-checkpointer = MemorySaver()
-
-agent = workflow.compile(
-    checkpointer=checkpointer,
-    store=store,  # 可选的持久化 store
-)
-```python
-
-### 9.3.2 Thread State 的状态管理
-
-```python
-class ThreadState(AgentState):
-    # 当前会话的消息
-    messages: list[BaseMessage]
-    
-    # 当前任务上下文
-    current_task: str
-    task_progress: float  # 0.0 - 1.0
-    
-    # 子任务状态
-    subtasks: list[SubTask]
-    completed_subtasks: list[str]
-    
-    # 生成物追踪
-    artifacts: list[Artifact]
-    
-    # 沙箱状态
-    sandbox: SandboxState
+```text
+backend/packages/harness/deerflow/agents/middlewares/memory_middleware.py
 ```
 
-### 9.3.3 状态持久化
+`MemoryMiddleware` 是 LangChain `AgentMiddleware`。它在 `after_agent()` 中把本轮对话加入 Memory update queue。
 
-```python
-# 检查点保存
-async def save_checkpoint(
-    thread_id: str,
-    state: ThreadState
-):
-    """保存当前状态到持久化存储"""
-    checkpoint = {
-        "thread_id": thread_id,
-        "state": serialize(state),
-        "timestamp": datetime.now().isoformat(),
-        "version": CHECKPOINT_VERSION,
+## 9.3 JSON 存储结构
+
+`storage.py` 的 `create_empty_memory()` 定义默认结构：
+
+```json
+{
+  "version": "1.0",
+  "lastUpdated": "2026-06-21T00:00:00Z",
+  "user": {
+    "workContext": {
+      "summary": "",
+      "updatedAt": ""
+    },
+    "personalContext": {
+      "summary": "",
+      "updatedAt": ""
+    },
+    "topOfMind": {
+      "summary": "",
+      "updatedAt": ""
     }
-    
-    await storage.write(
-        f"checkpoints/{thread_id}",
-        checkpoint
-    )
-```python
-
-## 9.4 Long-term Memory（长期记忆）
-
-### 9.4.1 记忆存储结构
-
-```python
-class MemoryRecord(BaseModel):
-    id: str
-    content: str
-    embedding: List[float]
-    
-    # 元数据
-    source: str              # 来源 Agent 或 User
-    memory_type: str         # "fact" | "preference" | "pattern"
-    project_id: Optional[str]
-    agent_id: Optional[str]
-    
-    # 时间戳
-    created_at: datetime
-    last_accessed: datetime
-    access_count: int
-    
-    # 置信度
-    confidence: float        # 0.0 - 1.0
-    verified: bool           # 是否经过人工确认
-```
-
-### 9.4.2 记忆索引策略
-
-```python
-class MemoryIndex:
-    """
-    多维度记忆索引
-    """
-    def __init__(self):
-        # 1. 向量索引 - 基于语义相似度
-        self.vector_index: VectorStore = FAISS()
-        
-        # 2. 关键词索引 - 精确匹配
-        self.keyword_index: InvertedIndex = {}
-        
-        # 3. 图索引 - 实体关系
-        self.graph_index: GraphStore = NetworkX()
-        
-        # 4. 时间索引 - 时序检索
-        self.temporal_index: BTree = {}
-    
-    async def add(self, memory: MemoryRecord):
-        """添加记忆"""
-        # 同步到所有索引
-        await self.vector_index.add(memory)
-        self.keyword_index.update(memory)
-        self.graph_index.add_entity(memory)
-        self.temporal_index.insert(memory.created_at, memory.id)
-```python
-
-### 9.4.3 记忆检索
-
-```python
-async def retrieve_memories(
-    query: str,
-    project_id: Optional[str] = None,
-    memory_type: Optional[str] = None,
-    top_k: int = 10,
-) -> List[MemoryRecord]:
-    """
-    检索相关记忆
-    """
-    results = []
-    
-    # 1. 向量相似度检索
-    vector_results = await vector_index.search(
-        query=query,
-        top_k=top_k,
-        filter={"project_id": project_id}
-    )
-    results.extend(vector_results)
-    
-    # 2. 关键词精确匹配
-    keyword_results = keyword_index.search(query)
-    results.extend(keyword_results[:3])
-    
-    # 3. 图关系扩展
-    related = graph_index.find_related(results)
-    results.extend(related)
-    
-    # 4. 去重 + 排序
-    return deduplicate_and_rank(results, query)
-```
-
-## 9.5 记忆 Consolidation（整合）
-
-> **⚠️ 注意**：记忆整合的摘要生成会消耗额外 Token。在高频写入场景下，建议将整合任务异步化，避免阻塞主 Agent 的响应时间。
-
-### 9.5.1 什么时候整合
-
-```python
-# 触发条件
-CONSOLIDATION_TRIGGERS = {
-    "token_threshold": 8000,      # 上下文 token 超过阈值
-    "task_complete": True,          # 任务完成时
-    "session_end": True,            # 会话结束时
-    "manual": True,                 # 手动触发
+  },
+  "history": {
+    "recentMonths": {
+      "summary": "",
+      "updatedAt": ""
+    },
+    "earlierContext": {
+      "summary": "",
+      "updatedAt": ""
+    },
+    "longTermBackground": {
+      "summary": "",
+      "updatedAt": ""
+    }
+  },
+  "facts": []
 }
-```python
-
-### 9.5.2 整合流程
-
-```python
-async def consolidate(
-    thread_id: str,
-    trigger: str
-):
-    """
-    记忆整合流程
-    """
-    # 1. 获取当前所有 Working Memory
-    current_state = await checkpointer.get(thread_id)
-    messages = current_state["messages"]
-    
-    # 2. 识别值得保留的信息
-    important_info = await extract_key_information(messages)
-    
-    # 3. 与已有 Long-term Memory 合并
-    existing_memories = await memory_index.get_related(important_info)
-    merged = await merge_memories(important_info, existing_memories)
-    
-    # 4. 生成摘要（如果太长）
-    if len(merged) > MAX_MEMORY_SIZE:
-        merged = await summarize_memories(merged)
-    
-    # 5. 写入长期记忆
-    for memory in merged:
-        await memory_index.add(memory)
-    
-    # 6. 清理 Working Memory 中的冗余信息
-    await trim_working_memory(thread_id, keep_recent=True)
 ```
 
-### 9.5.3 递归摘要
+`facts` 中每条记录是普通 JSON object：
 
-当单个记忆超出容量时，使用递归摘要：
-
-```python
-async def recursive_summarize(
-    content: str,
-    max_tokens: int = 2000
-) -> str:
-    """
-    递归摘要，直到满足长度要求
-    """
-    if count_tokens(content) <= max_tokens:
-        return content
-    
-    # 分块
-    chunks = split_into_chunks(content, max_tokens // 2)
-    
-    # 分别摘要每个块
-    summarized_chunks = []
-    for chunk in chunks:
-        summary = await llm.summarize(chunk)
-        summarized_chunks.append(summary)
-    
-    # 合并后递归摘要
-    return await recursive_summarize(
-        "\n".join(summarized_chunks),
-        max_tokens
-    )
-```python
-
-## 9.6 企业级记忆系统设计
-
-### 9.6.1 企业知识库集成
-
-```python
-class EnterpriseMemorySystem:
-    """
-    企业级记忆系统
-    """
-    
-    def __init__(self, kb_client: KnowledgeBaseClient):
-        self.kb = kb_client
-        
-        # 企业知识库
-        self.corporate_memory: VectorStore
-        
-        # 项目级记忆
-        self.project_memories: Dict[str, ProjectMemory]
-        
-        # 个人偏好记忆
-        self.user_preferences: Dict[str, UserPreference]
-    
-    async def search_corporate_knowledge(
-        self,
-        query: str,
-        department: Optional[str] = None
-    ) -> List[KnowledgeEntry]:
-        """
-        搜索企业知识库
-        """
-        # 1. 基础向量搜索
-        results = await self.corporate_memory.search(
-            query=query,
-            top_k=20
-        )
-        
-        # 2. 部门权限过滤
-        if department:
-            results = [r for r in results if r.department == department]
-        
-        # 3. 时效性加权
-        results = self.re_rank_by_recency(results)
-        
-        return results[:10]
+```json
+{
+  "id": "fact_ab12cd34",
+  "content": "User prefers concise Chinese status updates for repo work.",
+  "category": "preference",
+  "confidence": 0.95,
+  "createdAt": "2026-06-21T00:00:00Z",
+  "source": "thread_id"
+}
 ```
 
-### 9.6.2 项目级记忆
+没有 embedding。没有向量索引。没有相似度分数。
+
+## 9.4 Storage：文件存储与隔离
+
+`MemoryStorage` 是抽象接口：
 
 ```python
-class ProjectMemory:
-    """
-    项目级记忆 - 追踪项目全生命周期
-    """
-    
-    def __init__(self, project_id: str):
-        self.project_id = project_id
-        
-        # 项目配置
-        self.config: ProjectConfig
-        
-        # 任务历史
-        self.task_history: List[TaskExecution]
-        
-        # 决策记录
-        self.decisions: List[Decision]
-        
-        # 团队交互历史
-        self.team_interactions: List[Interaction]
-        
-        # 关键产出物
-        self.artifacts: List[Artifact]
-    
-    async def record_task_execution(
-        self,
-        task: Task,
-        result: TaskResult,
-        agent_id: str
-    ):
-        """记录任务执行"""
-        execution = TaskExecution(
-            task=task,
-            result=result,
-            agent_id=agent_id,
-            timestamp=datetime.now(),
-        )
-        self.task_history.append(execution)
-        
-        # 如果任务涉及决策，记录决策点
-        if task.requires_decision:
-            await self._record_decision_point(task, result)
-    
-    async def get_context_summary(self) -> str:
-        """获取项目上下文摘要"""
-        return f"""
-        项目：{self.config.name}
-        阶段：{self.config.current_phase}
-        已完成任务：{len([t for t in self.task_history if t.status == 'completed'])}
-        进行中任务：{len([t for t in self.task_history if t.status == 'in_progress'])}
-        关键决策：{len(self.decisions)}
-        """
-```python
+class MemoryStorage(abc.ABC):
+    @abc.abstractmethod
+    def load(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
+        pass
 
-### 9.6.3 记忆权限控制
+    @abc.abstractmethod
+    def reload(self, agent_name: str | None = None, *, user_id: str | None = None) -> dict[str, Any]:
+        pass
 
-```python
-class MemoryAccessControl:
-    """
-    记忆访问控制 - 实现数据隔离
-    """
-    
-    def can_access(
-        subject: Agent | User,
-        memory: MemoryRecord,
-        project: Project
-    ) -> bool:
-        """
-        判断主体是否可以访问某条记忆
-        """
-        # 1. 检查项目权限
-        if memory.project_id:
-            if memory.project_id != project.id:
-                return False
-        
-        # 2. 检查敏感标记
-        if memory.sensitivity == "confidential":
-            if subject.role not in ["admin", "owner"]:
-                return False
-        
-        # 3. 检查部门权限
-        if memory.department:
-            if subject.department != memory.department:
-                if subject.role not in ["admin", "cross_department"]:
-                    return False
-        
-        return True
+    @abc.abstractmethod
+    def save(self, memory_data: dict[str, Any], agent_name: str | None = None, *, user_id: str | None = None) -> bool:
+        pass
 ```
 
-## 9.7 上下文压缩实战
+默认实现是 `FileMemoryStorage`：
 
-### 9.7.1 基于重要性的压缩
+| 能力 | 实现 |
+|------|------|
+| 文件格式 | JSON |
+| 读写方式 | `json.load` / `json.dump(..., ensure_ascii=False)` |
+| 原子写入 | 先写临时文件，再 `replace()` |
+| 缓存 | `(user_id, agent_name)` + 文件 mtime |
+| 并发保护 | `threading.Lock` 保护 cache |
+| 路径安全 | `agent_name` 必须匹配 `AGENT_NAME_PATTERN` |
 
-```python
-async def importance_based_compress(
-    messages: List[Message],
-    max_tokens: int
-) -> List[Message]:
-    """
-    基于重要性保留关键消息
-    """
-    # 1. 评分每条消息
-    scored = []
-    for msg in messages:
-        score = await rate_message_importance(msg)
-        scored.append((score, msg))
-    
-    # 2. 按重要性排序
-    scored.sort(key=lambda x: x[0], reverse=True)
-    
-    # 3. 保留最重要的
-    result = []
-    current_tokens = 0
-    
-    for score, msg in scored:
-        msg_tokens = count_tokens(msg)
-        if current_tokens + msg_tokens <= max_tokens:
-            result.append(msg)
-            current_tokens += msg_tokens
-        else:
-            # 用摘要替代
-            if score > 0.5:  # 重要消息才保留摘要
-                summary = await llm.summarize(msg.content)
-                result.append(Message(content=f"[摘要] {summary}"))
-    
-    # 4. 保持时间顺序
-    result.sort(key=lambda x: x.timestamp)
-    
-    return result
-```python
+路径选择逻辑：
 
-### 9.7.2 对话式压缩
-
-```python
-async def conversational_compress(
-    messages: List[Message]
-) -> List[Message]:
-    """
-    将连续的用户/助手对话压缩为「要点」
-    """
-    # 1. 识别对话轮次
-    turns = extract_conversation_turns(messages)
-    
-    # 2. 每轮生成摘要
-    summarized_turns = []
-    for turn in turns:
-        summary = await summarize_turn(turn)
-        summarized_turns.append(summary)
-    
-    # 3. 合并相邻相似摘要
-    merged = merge_adjacent_summaries(summarized_turns)
-    
-    return merged
+```text
+user_id + agent_name -> user_agent_memory_file(user_id, agent_name)
+user_id only         -> user_memory_file(user_id)
+agent_name only      -> agent_memory_file(agent_name)
+legacy global        -> memory_file 或 memory.storage_path
 ```
 
-## 9.8 小结
+这和 DeerFlow 2.0 的多用户架构一致：Memory 不再只是全局文件，也能按用户与 Agent 作用域隔离。
 
-DeerFlow 的 Memory 系统核心要点：
+## 9.5 MemoryMiddleware：何时更新
+
+`MemoryMiddleware` 不在模型调用前做向量检索。它在 `after_agent()` 做一件事：把有意义的对话放进更新队列。
+
+```text
+Agent finishes
+  |
+  v
+MemoryMiddleware.after_agent()
+  |
+  +-- check memory.enabled
+  +-- resolve thread_id
+  +-- read state["messages"]
+  +-- filter to user inputs and final assistant responses
+  +-- detect correction / reinforcement
+  +-- capture effective user_id
+  +-- queue.add(...)
+```
+
+它只保留用户输入和最终 assistant 回复，忽略 tool calls。这样做是为了避免把工具噪声、临时错误和大段中间过程直接写入长期记忆。
+
+## 9.6 Queue：异步与 Debounce
+
+Memory 更新由 `queue.py` 管理。设计目标：
+
+1. 不阻塞 Agent 主流程。
+2. 多轮对话可以 debounce 合并。
+3. update 时携带 `thread_id`、`agent_name`、`user_id`、correction/reinforcement 信号。
+4. 用户上下文在 enqueue 时捕获，因为 timer 线程不会自动继承 request ContextVar。
+
+这解释了为什么 Memory 是“最终一致”的：一次 Agent 结束后，记忆更新可能稍后发生，而不是同步写入。
+
+## 9.7 Updater：LLM 生成 JSON 更新
+
+`MemoryUpdater` 的核心流程：
+
+```text
+load current memory
+  |
+  v
+format conversation for update
+  |
+  v
+build MEMORY_UPDATE_PROMPT
+  |
+  v
+model.invoke(..., run_name="memory_agent")
+  |
+  v
+parse first valid JSON object
+  |
+  v
+apply updates
+  |
+  v
+strip upload event mentions
+  |
+  v
+save JSON memory
+```
+
+LLM 输出格式包含四部分：
+
+```json
+{
+  "user": {
+    "workContext": {
+      "shouldUpdate": true,
+      "summary": "..."
+    },
+    "personalContext": {
+      "shouldUpdate": false,
+      "summary": ""
+    },
+    "topOfMind": {
+      "shouldUpdate": true,
+      "summary": "..."
+    }
+  },
+  "history": {
+    "recentMonths": {
+      "shouldUpdate": true,
+      "summary": "..."
+    },
+    "earlierContext": {
+      "shouldUpdate": false,
+      "summary": ""
+    },
+    "longTermBackground": {
+      "shouldUpdate": false,
+      "summary": ""
+    }
+  },
+  "newFacts": [
+    {
+      "content": "...",
+      "category": "preference",
+      "confidence": 0.95
+    }
+  ],
+  "factsToRemove": ["fact_ab12cd34"]
+}
+```
+
+`updater.py` 会做严格归一化：
+
+| 输入 | 处理 |
+|------|------|
+| 非 JSON 或缺少必要 top-level key | 解析失败，本次更新放弃 |
+| malformed `newFacts` 且同时有 `factsToRemove` | 视为 unsafe partial update，拒绝 |
+| fact content 为空 | 丢弃 |
+| confidence 非有限数、<0 或 >1 | 丢弃或报错 |
+| 重复 fact content | 去重 |
+| fact 数超过 `max_facts` | 按 confidence 降序保留 |
+
+## 9.8 Fact 分类
+
+官方 prompt 使用这些 category：
+
+| category | 含义 |
+|----------|------|
+| `preference` | 工具、风格、方法偏好 |
+| `knowledge` | 用户掌握的技术或领域知识 |
+| `context` | 背景事实，如项目、职位、语言 |
+| `behavior` | 工作模式、沟通习惯、问题处理方式 |
+| `goal` | 明确目标、学习方向、项目计划 |
+| `correction` | 用户明确纠正过的错误和正确做法 |
+
+`correction` 是 2.0 Memory 里很实际的设计：当系统检测到用户纠错时，会提示 LLM 特别关注“哪里错了、正确做法是什么”，并用较高 confidence 记录。
+
+## 9.9 上传文件事件不会长期记忆
+
+`updater.py` 有 `_strip_upload_mentions_from_memory()`，会删除“用户上传了某文件”这类记忆。
+
+原因是上传文件通常是 session-scoped。把“用户上传了 `/mnt/user-data/uploads/foo.pdf`”写入长期记忆，会导致未来会话里 Agent 试图访问已经不存在的文件。
+
+## 9.10 Prompt 注入
+
+Memory 的使用点不是 similarity recall，而是格式化注入。
+
+`prompt.py` 的 `format_memory_for_injection()` 会：
+
+1. 读取 user/history summaries。
+2. 按 confidence 对 facts 排序。
+3. 在 token budget 内尽量加入高置信 facts。
+4. 输出可放入提示词的文本。
+
+这使 Memory 的行为可解释：模型看到的是明确的 profile 和 facts，而不是从向量库召回的一堆片段。
+
+## 9.11 配置要点
+
+主配置在 `config.yaml` 的 `memory` block：
+
+```yaml
+memory:
+  enabled: true
+  storage_path: memory.json
+  debounce_seconds: 30
+  model_name: null
+  max_facts: 100
+  fact_confidence_threshold: 0.7
+  injection_enabled: true
+  max_injection_tokens: 2000
+  token_counting: tiktoken
+```
+
+注意：
+
+1. `storage_path` 是 legacy/global 场景；多用户路径会优先走 `get_paths().user_memory_file(user_id)` 等方法。
+2. `token_counting` 控制注入时 token 估算，不代表 embedding。
+3. 企业知识库 RAG 应作为 MCP/custom tool 接入，不要误写成内置 Memory 的向量索引。
+
+## 9.12 API 与 SDK 操作
+
+DeerFlow 暴露了 Memory 管理能力，典型操作包括：
+
+```python
+client.get_memory()
+client.export_memory()
+client.import_memory(data)
+client.reload_memory()
+client.clear_memory()
+client.create_memory_fact("内容", category="context")
+client.update_memory_fact(fact_id, content="新内容")
+client.delete_memory_fact(fact_id)
+```
+
+这些操作本质上都是读取或修改 JSON memory 数据。`create_memory_fact()` 会直接追加 fact 并保存；`update_memory_fact()` 和 `delete_memory_fact()` 按 fact id 修改。
+
+## 9.13 企业扩展建议
+
+企业知识库、向量数据库、RAG 可以接入 DeerFlow，但它们不是 DeerFlow 内置 Memory 的实现。推荐区分两层：
+
+| 层级 | 用途 | 推荐接入方式 |
+|------|------|--------------|
+| DeerFlow Memory | 用户偏好、纠错、长期 profile | 保持 JSON/LLM 更新模型 |
+| 企业知识库 | 文档、制度、FAQ、代码库检索 | MCP server、RAG service、custom tool |
+| 项目审计 | 决策、审批、工具调用记录 | run_events、外部审计仓库 |
+
+如果要把企业知识库结果注入 Agent，不建议改造 Memory 为向量库。更稳妥的做法是：
+
+1. 建一个带权限过滤的知识库 MCP server。
+2. 在 Gateway/MCP interceptor 中注入 user、tenant、request id。
+3. 由知识库服务端做文档级权限判断。
+4. 让 Agent 在需要时调用检索工具。
+
+这样可以保持 Memory 的简单可靠，同时把大规模检索交给更合适的系统。
+
+## 9.14 小结
+
+DeerFlow 2.0 Memory 的核心要点：
 
 | 组件 | 功能 |
 |------|------|
-| **Working Memory** | LangGraph Checkpointing，当前会话状态 |
-| **Long-term Memory** | 向量+图+关键词多索引持久化 |
-| **Consolidation** | 自动触发记忆整合，防止上下文膨胀 |
-| **Retrieval** | 多策略检索，相关记忆召回 |
+| `FileMemoryStorage` | JSON 文件读写、cache、原子保存 |
+| `MemoryMiddleware` | Agent 结束后排队更新 |
+| `MemoryUpdateQueue` | debounce、异步更新、携带 user/thread/agent 上下文 |
+| `MemoryUpdater` | LLM 生成 JSON 更新、合并 summaries 和 facts |
+| `format_memory_for_injection()` | 按 token budget 注入 profile/facts |
 
-企业级记忆扩展方向：
-- **知识库集成**：对接企业文档、FAQ、标准操作程序
-- **项目级记忆**：长周期项目的状态追踪
-- **权限控制**：基于 RBAC 的记忆访问隔离
-- **审计追溯**：记忆的创建、修改历史完整记录
+需要避免的误解：
 
-这些能力是企业 Agent 的核心竞争力，也是 DeerFlow 二次开发的重要方向。
-
-
-## 本章小结
-
-本章深入解析了 DeerFlow 的记忆系统设计与实现：
-
-1. **三层记忆**：短期记忆（对话上下文）、长期记忆（向量数据库）、持久化记忆（外部知识库），满足不同时间跨度的信息 retention 需求。
-2. **Recall 机制**：基于语义相似度的记忆检索，通过 embedding 模型将查询与记忆向量化，返回最相关的历史信息。
-3. **记忆注入**：系统 Prompt 中动态嵌入记忆片段，确保 Agent 在每次推理时都能访问到相关背景知识。
-4. **隐私与隔离**：企业级场景下，记忆按租户/项目隔离，支持细粒度访问控制与数据脱敏。
-
-> **💡 最佳实践**：定期清理短期记忆（如保留最近 10 轮对话），将重要信息通过显式调用写入长期记忆，避免上下文窗口膨胀。
-
----
-
-**下一步**：阅读第十章，掌握上下文工程的核心技术与 Token 预算管理。
-
+- 不要把 DeerFlow Memory 写成 embedding/vector DB。
+- 不要把 semantic similarity 当作 Memory 召回机制。
+- 不要把企业 RAG 当作内置 Memory。
+- 不要把临时上传文件事件写入长期记忆。

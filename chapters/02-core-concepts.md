@@ -146,8 +146,10 @@ Memory 是 DeerFlow 的知识持久化层。
 ```
 
 **存储后端：**
-- Working Memory: LangGraph Checkpointing
-- Long-term Memory: SQLite / PostgreSQL / 自定义
+- Working Memory: LangGraph Checkpointing / persistence
+- Long-term Memory: JSON profile/facts（默认 `memory.json`）/ 自定义 `MemoryStorage`
+
+DeerFlow 2.0 的内置 Memory 不使用 embedding、向量数据库或相似度检索。长期记忆由 LLM 从对话中提取用户画像、偏好、纠错和 facts，再以 JSON 结构持久化并注入提示词。
 
 ### 2.2.5 Context Engineering
 
@@ -266,4 +268,3 @@ DeerFlow 的设计哲学可以总结为：
 ---
 
 **下一步**：阅读第三章，了解 DeerFlow 的系统架构与模块职责边界。
-

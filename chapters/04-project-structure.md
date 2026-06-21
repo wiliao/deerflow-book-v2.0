@@ -235,7 +235,7 @@ sandbox:
 | **Agent 类型** | `backend/packages/harness/deerflow/subagents/` | 新增专业 Agent |
 | **Skill** | `skills/` | 企业专用能力 |
 | **Middleware** | `backend/packages/harness/deerflow/agents/middlewares/` | 添加审批、检查逻辑 |
-| **Memory** | `backend/packages/harness/deerflow/agents/memory/` | 企业知识库对接 |
+| **Memory** | `backend/packages/harness/deerflow/agents/memory/` | JSON profile/facts、LLM 更新、自定义 `MemoryStorage` |
 | **Channel** | `backend/app/channels/` 与 `backend/app/gateway/routers/channels.py` | 企业 IM 集成 |
 
 ## 4.7 小结
@@ -263,4 +263,3 @@ DeerFlow 的项目结构清晰，分层明确：
 ---
 
 **下一步**：阅读第五章，深入理解 Agent 核心的 LangGraph 编排逻辑。
-

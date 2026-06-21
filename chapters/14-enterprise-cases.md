@@ -20,7 +20,7 @@
 | 企业级模块 | 二次开发重点 |
 |---------------|--------------|
 | Agent Teams | Sub-Agent 体系扩展 + 自定义 Agent 类型 |
-| Memory | 企业知识库集成 + 项目级记忆 |
+| Memory | JSON profile/facts 扩展 + 外部企业知识库接入 |
 | Sandbox | 企业级沙箱（审计、配额） |
 | Human-in-loop | 审批中间件 + 审计日志 |
 | Context Engineering | 企业知识注入 + 合规过滤 |
@@ -1334,7 +1334,7 @@ enterprise:
 本章通过企业级案例展示了 DeerFlow 的二次开发与部署实践：
 
 1. **多租户架构**：基于 Gateway API 实现租户隔离，通过 RBAC 控制用户权限，确保数据与资源的安全边界。
-2. **企业知识库**：集成向量数据库（如 Milvus/Pinecone）与私有文档，实现项目级记忆的持久化与召回。
+2. **企业知识库**：可将向量数据库（如 Milvus/Pinecone）作为外部 RAG / 私有文档检索服务接入；DeerFlow 内置 Memory 仍是 JSON profile/facts、LLM 更新与 prompt 注入，二者应保持清晰边界。
 3. **审计与合规**：全链路审计日志记录 Agent 行为、人工干预、沙箱执行，支持合规报告与事后追溯。
 4. **Kubernetes 部署**：通过 Deployment + Service + ConfigMap 实现高可用部署，HPA 自动伸缩应对流量波动。
 
@@ -1343,4 +1343,3 @@ enterprise:
 ---
 
 **下一步**：参考附录 A（配置参考）与附录 B（贡献指南），开始你的 DeerFlow 二次开发之旅。
-

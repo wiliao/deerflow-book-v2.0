@@ -46,7 +46,7 @@
 
 ### Memory
 - **英文原名**：Memory
-- **释义**：记忆系统，DeerFlow 的三层记忆模型包括短期记忆（对话上下文）、长期记忆（向量数据库）与持久化记忆（外部知识库）。
+- **释义**：记忆系统。DeerFlow 2.0 的内置 Memory 使用 JSON profile/facts 持久化、LLM 抽取更新与 prompt 注入，不依赖 embedding、向量数据库或相似度检索。外部 RAG / 企业知识库可以作为独立扩展接入，但不属于内置 Memory 实现。
 - **相关章节**：第九章（Memory）
 
 ### Middleware
